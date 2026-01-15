@@ -175,6 +175,7 @@ import {
   ArrowRightOnRectangleIcon,
   ArrowsRightLeftIcon,
   ClockIcon,
+  BanknotesIcon,
 } from '@heroicons/vue/24/outline'
 
 const menuColapsado = ref(false)
@@ -191,6 +192,7 @@ const tituloPagina = computed(() => {
     Caixa: 'Controle de Caixa',
     Movimentacoes: 'Movimentações de Caixa',
     HistoricoMovimentacoes: 'Histórico de Movimentações',
+    MovimentacoesCaixa: 'Movimentações de Caixa',
     Clientes: 'Cadastro de Clientes',
     Financeiro: 'Controle Financeiro',
     Relatorios: 'Relatórios'
@@ -207,6 +209,7 @@ const itensMenu = [
     submenu: [
       { nome: 'Caixa', rota: '/caixa', icone: CurrencyDollarIcon },
       { nome: 'Movimentações', rota: '/movimentacoes', icone: ArrowsRightLeftIcon },
+      { nome: 'Movimentações de Caixa', rota: '/movimentacoes-caixa', icone: BanknotesIcon },
       { nome: 'Histórico de Movimentações', rota: '/historico-movimentacoes', icone: ClockIcon }
     ]
   },

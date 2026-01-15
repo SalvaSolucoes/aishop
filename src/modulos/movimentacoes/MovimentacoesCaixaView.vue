@@ -1,5 +1,5 @@
 <template>
-  <div class="historico-movimentacoes-view">
+  <div class="movimentacoes-caixa-view">
     <div v-if="erro" class="alert alert-erro">
       {{ erro }}
     </div>
@@ -41,16 +41,16 @@
       </div>
     </div>
 
-    <!-- Histórico de Movimentações -->
-    <div class="movimentacao-history-section">
+    <!-- Movimentações de Caixa -->
+    <div class="movimentacao-section">
       <div class="section-header-modern">
         <div class="section-header-content">
-          <div class="section-icon-wrapper section-icon-history">
-            <ClockIcon class="section-icon" />
+          <div class="section-icon-wrapper">
+            <ArrowsRightLeftIcon class="section-icon" />
           </div>
           <div>
-            <h3 class="section-title-modern">Histórico de Movimentações</h3>
-            <p class="section-subtitle">Visualize todas as movimentações registradas</p>
+            <h3 class="section-title-modern">Movimentações de Caixa</h3>
+            <p class="section-subtitle">Entradas e saídas (exceto vendas)</p>
           </div>
         </div>
         <div class="filter-group">
@@ -75,7 +75,7 @@
         <div v-else-if="movimentacoes.length === 0" class="table-empty">
           <ArrowsRightLeftIcon class="empty-icon" />
           <p class="empty-text">Nenhuma movimentação encontrada</p>
-          <p class="empty-hint">As movimentações registradas aparecerão aqui</p>
+          <p class="empty-hint">Movimentações de caixa (sangria, suprimento, etc.) aparecerão aqui</p>
         </div>
         <div v-else class="table-container-modern">
           <table class="tabela tabela-movimentacoes">
@@ -84,6 +84,7 @@
                 <th>Data e Hora</th>
                 <th>Tipo</th>
                 <th>Descrição</th>
+                <th>Categoria</th>
                 <th>Valor</th>
               </tr>
             </thead>
@@ -104,23 +105,21 @@
                   </div>
                 </td>
                 <td>
-                  <span :class="mov.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
-                    <component :is="mov.tipo === 'entrada' ? ArrowUpIcon : ArrowDownIcon" class="badge-icon" />
-                    <span class="badge-text">{{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}</span>
+                  <span :class="mov.tipo === 'entrada' || mov.tipo === 'suprimento' ? 'badge badge-entrada' : 'badge badge-saida'">
+                    <component :is="mov.tipo === 'entrada' || mov.tipo === 'suprimento' ? ArrowUpIcon : ArrowDownIcon" class="badge-icon" />
+                    <span class="badge-text">{{ formatarTipo(mov.tipo) }}</span>
                   </span>
                 </td>
                 <td>
-                  <div class="table-cell-descricao-wrapper">
-                    <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
-                    <div class="badges-container">
-                      <span v-if="mov.numeroVenda" class="venda-tag">#venda{{ mov.numeroVenda }}</span>
-                      <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
-                    </div>
-                  </div>
+                  <div class="table-cell-descricao">{{ mov.descricao }}</div>
                 </td>
                 <td>
-                  <div :class="mov.tipo === 'entrada' ? 'valor-cell valor-entrada' : 'valor-cell valor-saida'">
-                    <span class="valor-symbol">{{ mov.tipo === 'entrada' ? '+' : '-' }}</span>
+                  <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
+                  <span v-else class="text-muted">-</span>
+                </td>
+                <td>
+                  <div :class="mov.tipo === 'entrada' || mov.tipo === 'suprimento' ? 'valor-cell valor-entrada' : 'valor-cell valor-saida'">
+                    <span class="valor-symbol">{{ mov.tipo === 'entrada' || mov.tipo === 'suprimento' ? '+' : '-' }}</span>
                     <span class="valor-amount">{{ formatarMoeda(mov.valor) }}</span>
                   </div>
                 </td>
@@ -161,6 +160,16 @@ const totalSaidas = computed(() => {
     .reduce((sum, m) => sum + m.valor, 0)
 })
 
+function formatarTipo(tipo) {
+  const tipos = {
+    'entrada': 'Entrada',
+    'saida': 'Saída',
+    'sangria': 'Sangria',
+    'suprimento': 'Suprimento'
+  }
+  return tipos[tipo] || tipo
+}
+
 async function carregarMovimentacoes() {
   carregando.value = true
   erro.value = ''
@@ -169,16 +178,76 @@ async function carregarMovimentacoes() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Buscar apenas movimentações que NÃO são vendas
-    const { data, error } = await supabase
+    // Buscar todas as vendas do usuário em ordem cronológica
+    const { data: vendasData, error: errorVendas } = await supabase
+      .from('vendas')
+      .select('id, numero_venda, created_at, caixa_id, total')
+      .eq('usuario_id', user.id)
+      .order('created_at', { ascending: true })
+
+    if (errorVendas) throw errorVendas
+
+    // Criar mapa de vendas com numeração sequencial
+    const vendasMap = new Map()
+    let numeroSequencial = 1
+    
+    ;(vendasData || []).forEach(venda => {
+      vendasMap.set(venda.id, {
+        ...venda,
+        numeroSequencial: numeroSequencial++
+      })
+    })
+
+    // Buscar movimentações
+    const { data: movimentacoesData, error: errorMov } = await supabase
       .from('movimentacoes_caixa')
       .select('*')
       .eq('usuario_id', user.id)
-      .neq('categoria', 'Vendas') // Excluir vendas
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-    movimentacoes.value = data || []
+    if (errorMov) throw errorMov
+
+    // Processar movimentações e tentar identificar vendas
+    const movimentacoesProcessadas = (movimentacoesData || []).map(mov => {
+      // Verificar se é uma entrada que pode ser venda
+      // Critérios: tipo entrada + (categoria venda OU descrição contém "Venda")
+      const isVenda = mov.tipo === 'entrada' && 
+                      (mov.categoria?.toLowerCase() === 'venda' || 
+                       mov.descricao?.toLowerCase().includes('venda'))
+      
+      if (isVenda) {
+        // Tentar encontrar venda correspondente pelo caixa_id e timestamp próximo
+        const vendasDoCaixa = Array.from(vendasMap.values()).filter(v => v.caixa_id === mov.caixa_id)
+        
+        // Encontrar venda com timestamp mais próximo (dentro de 10 segundos)
+        let vendaMaisProxima = null
+        let menorDiferenca = Infinity
+        
+        vendasDoCaixa.forEach(venda => {
+          const diffMs = Math.abs(new Date(venda.created_at) - new Date(mov.created_at))
+          if (diffMs < 10000 && diffMs < menorDiferenca) { // Menos de 10 segundos
+            menorDiferenca = diffMs
+            vendaMaisProxima = venda
+          }
+        })
+        
+        if (vendaMaisProxima) {
+          return {
+            ...mov,
+            numeroVenda: vendaMaisProxima.numeroSequencial,
+            numeroVendaOriginal: vendaMaisProxima.numero_venda,
+            isVenda: true
+          }
+        }
+      }
+      
+      return {
+        ...mov,
+        isVenda: false
+      }
+    })
+
+    movimentacoes.value = movimentacoesProcessadas
   } catch (err) {
     erro.value = 'Erro ao carregar movimentações: ' + err.message
     console.error(err)
@@ -204,7 +273,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.historico-movimentacoes-view {
+.movimentacoes-caixa-view {
   width: 100%;
 }
 
@@ -293,7 +362,7 @@ onUnmounted(() => {
   color: #0ea5e9;
 }
 
-.movimentacao-history-section {
+.movimentacao-section {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -319,7 +388,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 3rem;
   height: 3rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   border-radius: 0.75rem;
   flex-shrink: 0;
 }
@@ -378,8 +447,8 @@ onUnmounted(() => {
 
 .form-input-filter-modern:focus {
   outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 
 .card-table-modern {
@@ -404,7 +473,7 @@ onUnmounted(() => {
   width: 2.5rem;
   height: 2.5rem;
   border: 3px solid #e5e7eb;
-  border-top-color: #8b5cf6;
+  border-top-color: #0ea5e9;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 1rem;
@@ -462,13 +531,8 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.tabela-movimentacoes th:first-child {
-  padding-left: 1.5rem;
-}
-
 .tabela-movimentacoes th:last-child {
   text-align: right;
-  padding-right: 1.5rem;
 }
 
 .tabela-movimentacoes tbody tr {
@@ -538,40 +602,6 @@ onUnmounted(() => {
   color: #9ca3af;
 }
 
-.table-cell-descricao-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-width: 400px;
-}
-
-.badges-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.venda-tag {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  background: #f3f4f6;
-  color: #ea580c;
-  border: 1.5px solid #ea580c;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: lowercase;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.venda-tag:hover {
-  background: #fff7ed;
-  border-color: #c2410c;
-  color: #c2410c;
-}
-
 .table-cell-descricao {
   font-weight: 500;
   color: #111827;
@@ -587,7 +617,11 @@ onUnmounted(() => {
   border-radius: 0.375rem;
   font-size: 0.75rem;
   font-weight: 500;
-  width: fit-content;
+}
+
+.text-muted {
+  color: #9ca3af;
+  font-size: 0.875rem;
 }
 
 .valor-cell {
@@ -597,6 +631,7 @@ onUnmounted(() => {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  justify-content: flex-end;
 }
 
 .valor-entrada {
@@ -659,7 +694,6 @@ onUnmounted(() => {
   .section-header-modern {
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
   }
 
   .filter-group {
@@ -668,24 +702,11 @@ onUnmounted(() => {
 
   .form-input-filter-modern {
     max-width: 100%;
-    width: 100%;
-  }
-
-  .tabela-movimentacoes {
-    font-size: 0.8125rem;
   }
 
   .tabela-movimentacoes th,
   .tabela-movimentacoes td {
     padding: 0.875rem 1rem;
-  }
-
-  .table-cell-descricao-wrapper {
-    max-width: 200px;
-  }
-
-  .valor-cell {
-    font-size: 0.9375rem;
   }
 }
 </style>
