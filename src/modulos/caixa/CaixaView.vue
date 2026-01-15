@@ -202,7 +202,44 @@ async function confirmarAbrirCaixa() {
     if (!user) throw new Error('Usuário não autenticado')
 
     const hoje = new Date().toISOString().split('T')[0]
-    const { error } = await supabase
+    
+    // Check if there's already an open cash register for today
+    const { data: caixaExistente, error: checkError } = await supabase
+      .from('caixas')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .eq('data', hoje)
+      .limit(1)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError
+    }
+
+    // If a cash register already exists for today
+    if (caixaExistente) {
+      // Check if it's closed (has data_fechamento)
+      const { data: caixaDetalhes, error: detalhesError } = await supabase
+        .from('caixas')
+        .select('data_fechamento')
+        .eq('id', caixaExistente.id)
+        .single()
+
+      if (detalhesError) throw detalhesError
+
+      if (caixaDetalhes.data_fechamento) {
+        // Cash register is closed, show informative message
+        erroAbrirCaixa.value = 'Já existe um caixa para hoje, mas ele está fechado. Você pode reabri-lo ou usar outro dia.'
+        return
+      } else {
+        // Cash register is already open
+        erroAbrirCaixa.value = 'Você já tem um caixa aberto para hoje. Feche-o primeiro antes de abrir um novo.'
+        return
+      }
+    }
+
+    // No cash register exists for today, proceed with creation
+    const { error: insertError } = await supabase
       .from('caixas')
       .insert([{
         usuario_id: user.id,
@@ -210,7 +247,7 @@ async function confirmarAbrirCaixa() {
         valor_inicial: valorInicialInput.value
       }])
 
-    if (error) throw error
+    if (insertError) throw insertError
 
     mostrarMensagemSucesso('Caixa aberto com sucesso!')
     fecharModalAbrirCaixa()
