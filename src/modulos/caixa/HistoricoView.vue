@@ -118,15 +118,16 @@
                   {{ formatarDataHora(venda.created_at) }}
                 </td>
                 <td class="text-center">
-                  <span class="badge badge-modern badge-info">
-                    {{ venda.numero_venda }}
+                  <span class="badge badge-numero-venda">
+                    {{ extrairNumeroVenda(venda.numero_venda) }}
                   </span>
                 </td>
                 <td class="text-center">
                   {{ venda.cliente_nome || 'Cliente não informado' }}
                 </td>
                 <td class="text-center">
-                  <span class="badge badge-modern" :class="getBadgeClassFormaPagamento(venda.forma_pagamento)">
+                  <span class="badge badge-pagamento" :class="getBadgeClassFormaPagamento(venda.forma_pagamento)">
+                    <component :is="getIconeFormaPagamento(venda.forma_pagamento)" class="badge-icon" />
                     {{ formatarFormaPagamento(venda.forma_pagamento) }}
                   </span>
                 </td>
@@ -252,6 +253,10 @@ import {
   ChartBarIcon,
   ClockIcon,
   InformationCircleIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  DevicePhoneMobileIcon,
+  TicketIcon,
 } from '@heroicons/vue/24/outline'
 
 const caixaAtual = ref(null)
@@ -382,23 +387,34 @@ function fecharDetalhes() {
 function formatarFormaPagamento(forma) {
   const formas = {
     dinheiro: 'Dinheiro',
-    debito: 'Cartão Débito',
-    credito: 'Cartão Crédito',
+    debito: 'Débito',
+    credito: 'Crédito',
     pix: 'PIX',
-    vale: 'Vale/Convênio'
+    vale: 'Vale'
   }
   return formas[forma] || forma
 }
 
+function getIconeFormaPagamento(forma) {
+  const icones = {
+    dinheiro: BanknotesIcon,
+    debito: CreditCardIcon,
+    credito: CreditCardIcon,
+    pix: DevicePhoneMobileIcon,
+    vale: TicketIcon
+  }
+  return icones[forma] || CurrencyDollarIcon
+}
+
 function getBadgeClassFormaPagamento(forma) {
   const classes = {
-    dinheiro: 'badge-entrada',
-    debito: 'badge-info',
-    credito: 'badge-info',
-    pix: 'badge-info',
-    vale: 'badge-saida'
+    dinheiro: 'badge-dinheiro',
+    debito: 'badge-debito',
+    credito: 'badge-credito',
+    pix: 'badge-pix',
+    vale: 'badge-vale'
   }
-  return classes[forma] || 'badge-info'
+  return classes[forma] || 'badge-default'
 }
 
 function formatarDataHora(data) {
@@ -409,6 +425,12 @@ function formatarDataHora(data) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function extrairNumeroVenda(numeroVenda) {
+  // Remove o "#venda" e retorna apenas o número
+  if (!numeroVenda) return '-'
+  return numeroVenda.replace('#venda', '')
 }
 </script>
 
@@ -871,8 +893,21 @@ function formatarDataHora(data) {
   color: #ef4444;
 }
 
-/* Badges */
-.badge-modern {
+/* Badges Temáticos */
+.badge-numero-venda {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  color: #9a3412;
+  border: 1px solid #fb923c;
+  letter-spacing: 0.025em;
+}
+
+.badge-pagamento {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -880,6 +915,12 @@ function formatarDataHora(data) {
   border-radius: 0.5rem;
   font-size: 0.8125rem;
   font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.badge-pagamento:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .badge-icon {
@@ -888,16 +929,41 @@ function formatarDataHora(data) {
   flex-shrink: 0;
 }
 
-.badge-entrada {
+/* Badges por Forma de Pagamento */
+.badge-dinheiro {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   color: #065f46;
-  border-color: #10b981;
+  border: 1px solid #10b981;
 }
 
-.badge-saida {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #991b1b;
-  border-color: #ef4444;
+.badge-debito {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+}
+
+.badge-credito {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #3730a3;
+  border: 1px solid #6366f1;
+}
+
+.badge-pix {
+  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
+  color: #134e4a;
+  border: 1px solid #14b8a6;
+}
+
+.badge-vale {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  color: #831843;
+  border: 1px solid #ec4899;
+}
+
+.badge-default {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #374151;
+  border: 1px solid #d1d5db;
 }
 
 .categoria-badge {
@@ -913,13 +979,6 @@ function formatarDataHora(data) {
 
 .text-center {
   text-align: center;
-}
-
-/* Modal Específico */
-.badge-info {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border-color: #3b82f6;
 }
 
 .modal-detalhes {

@@ -116,8 +116,11 @@
             <p>Nenhuma venda registrada</p>
           </div>
           <ul v-else class="report-list">
-            <li v-for="item in formasPagamento" :key="item.forma" class="report-item">
-              <span class="report-name">{{ item.forma }}</span>
+            <li v-for="item in formasPagamento" :key="item.forma" class="report-item-pagamento">
+              <span class="badge badge-pagamento" :class="getBadgeClassFormaPagamento(item.forma)">
+                <component :is="getIconeFormaPagamento(item.forma)" class="badge-icon" />
+                {{ formatarFormaPagamento(item.forma) }}
+              </span>
               <span class="report-value">{{ formatarMoeda(item.total) }}</span>
             </li>
           </ul>
@@ -151,7 +154,11 @@ import { formatarMoeda } from '@/utils/formatadores'
 import {
   CurrencyDollarIcon,
   ShoppingCartIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  DevicePhoneMobileIcon,
+  TicketIcon
 } from '@heroicons/vue/24/outline'
 
 const carregando = ref(false)
@@ -171,6 +178,39 @@ const formasPagamento = ref([])
 
 function formatarData(data) {
   return new Date(data).toLocaleDateString('pt-BR')
+}
+
+function formatarFormaPagamento(forma) {
+  const formas = {
+    dinheiro: 'Dinheiro',
+    debito: 'Débito',
+    credito: 'Crédito',
+    pix: 'PIX',
+    vale: 'Vale'
+  }
+  return formas[forma] || forma
+}
+
+function getIconeFormaPagamento(forma) {
+  const icones = {
+    dinheiro: BanknotesIcon,
+    debito: CreditCardIcon,
+    credito: CreditCardIcon,
+    pix: DevicePhoneMobileIcon,
+    vale: TicketIcon
+  }
+  return icones[forma] || CurrencyDollarIcon
+}
+
+function getBadgeClassFormaPagamento(forma) {
+  const classes = {
+    dinheiro: 'badge-dinheiro',
+    debito: 'badge-debito',
+    credito: 'badge-credito',
+    pix: 'badge-pix',
+    vale: 'badge-vale'
+  }
+  return classes[forma] || 'badge-default'
 }
 
 async function carregarRelatorios() {
@@ -268,5 +308,81 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Estilos específicos do componente, se necessário */
+/* Item de Pagamento com Badge */
+.report-item-pagamento {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.2s ease;
+}
+
+.report-item-pagamento:last-child {
+  border-bottom: none;
+}
+
+.report-item-pagamento:hover {
+  background: #f9fafb;
+}
+
+/* Badges Temáticos */
+.badge-pagamento {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.badge-pagamento:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.badge-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Badges por Forma de Pagamento */
+.badge-dinheiro {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.badge-debito {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+}
+
+.badge-credito {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #3730a3;
+  border: 1px solid #6366f1;
+}
+
+.badge-pix {
+  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
+  color: #134e4a;
+  border: 1px solid #14b8a6;
+}
+
+.badge-vale {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  color: #831843;
+  border: 1px solid #ec4899;
+}
+
+.badge-default {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
 </style>
