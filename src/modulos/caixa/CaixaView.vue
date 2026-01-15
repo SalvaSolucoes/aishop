@@ -118,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
 import { formatarMoeda } from '@/utils/formatadores'
 import { CurrencyDollarIcon } from '@heroicons/vue/24/outline'
@@ -228,8 +228,24 @@ async function confirmarAbrirCaixa() {
       if (detalhesError) throw detalhesError
 
       if (caixaDetalhes.data_fechamento) {
-        // Cash register is closed, show informative message
-        erroAbrirCaixa.value = 'Já existe um caixa para hoje, mas ele está fechado. Você pode reabri-lo ou usar outro dia.'
+        // Cash register is closed, reopen it by clearing only the closing data
+        // Keep all other data (initial value, movements, totals, etc.)
+        const { error: reopenError } = await supabase
+          .from('caixas')
+          .update({
+            data_fechamento: null,
+            valor_final: null,
+            saldo_real: null,
+            diferenca_caixa: null,
+            motivo_fechamento: null
+          })
+          .eq('id', caixaExistente.id)
+
+        if (reopenError) throw reopenError
+        
+        mostrarMensagemSucesso('Caixa reaberto com os dados anteriores!')
+        fecharModalAbrirCaixa()
+        await verificarCaixaAberto()
         return
       } else {
         // Cash register is already open
@@ -315,9 +331,83 @@ function onVendaFinalizada(dados) {
   }))
 }
 
+// Auto-close timer
+const autoCloseTimer = ref(null)
+
+function iniciarVerificacaoAutomatica() {
+  // Clear existing timer
+  if (autoCloseTimer.value) {
+    clearInterval(autoCloseTimer.value)
+  }
+  
+  // Check every minute if the day has changed
+  autoCloseTimer.value = setInterval(async () => {
+    if (caixaAberto.value && caixaAtual.value) {
+      const hoje = new Date().toISOString().split('T')[0]
+      const dataCaixa = new Date(caixaAtual.value.data).toISOString().split('T')[0]
+      
+      // If date has changed, close the cash register
+      if (hoje !== dataCaixa) {
+        await fecharCaixaAutomaticamente()
+      }
+    }
+  }, 60000) // Check every minute
+}
+
+async function fecharCaixaAutomaticamente() {
+  if (!caixaAtual.value) return
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    
+    // Calculate final values
+    const totalEntradas = (caixaAtual.value.total_dinheiro || 0) + 
+                         (caixaAtual.value.total_debito || 0) + 
+                         (caixaAtual.value.total_credito || 0) + 
+                         (caixaAtual.value.total_pix || 0) + 
+                         (caixaAtual.value.total_vale || 0) + 
+                         (caixaAtual.value.total_suprimento || 0)
+    
+    const totalSaidas = caixaAtual.value.total_sangria || 0
+    const valorFinalCalculado = (caixaAtual.value.valor_inicial || 0) + totalEntradas - totalSaidas
+    
+    // Close the cash register
+    const { error } = await supabase
+      .from('caixas')
+      .update({
+        data_fechamento: new Date().toISOString(),
+        valor_final: valorFinalCalculado,
+        saldo_real: valorFinalCalculado,
+        diferenca_caixa: 0,
+        motivo_fechamento: 'Fechamento automático à meia-noite'
+      })
+      .eq('id', caixaAtual.value.id)
+    
+    if (error) throw error
+    
+    // Update UI
+    caixaAberto.value = false
+    caixaAtual.value = null
+    
+    // Show notification
+    mostrarMensagemSucesso('Caixa fechado automaticamente à meia-noite!')
+    
+  } catch (err) {
+    console.error('Erro ao fechar caixa automaticamente:', err)
+  }
+}
+
 onMounted(() => {
   verificarCaixaAberto()
+  iniciarVerificacaoAutomatica()
 })
+
+onUnmounted(() => {
+  if (autoCloseTimer.value) {
+    clearInterval(autoCloseTimer.value)
+  }
+}
 </script>
 
 <style scoped>
