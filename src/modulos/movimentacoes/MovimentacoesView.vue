@@ -320,7 +320,7 @@ import Toast from '@/componentes/Toast.vue'
 import { 
   caixaAtual as caixaAtualStore,
   refreshCaixaState
-} from '@/stores/caixa'
+} from '@/stores/caixa.js'
 
 const movimentacoes = ref([])
 const carregando = ref(false)

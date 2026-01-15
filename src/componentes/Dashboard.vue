@@ -200,7 +200,7 @@ import { formatarMoeda, formatarDataHora } from '@/utils/formatadores'
 import { 
   caixaAberto as caixaAbertoStore,
   refreshCaixaState
-} from '@/stores/caixa'
+} from '@/stores/caixa.js'
 import {
   CubeIcon,
   CurrencyDollarIcon,

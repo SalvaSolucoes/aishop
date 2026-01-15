@@ -135,7 +135,7 @@ import {
   abrirCaixa, 
   fecharCaixa as fecharCaixaService,
   refreshCaixaState
-} from '@/stores/caixa'
+} from '@/stores/caixa.js'
 
 const mostrarModalAbrirCaixa = ref(false)
 const valorInicialInput = ref(0)

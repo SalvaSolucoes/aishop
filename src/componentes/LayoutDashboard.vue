@@ -111,7 +111,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAutenticacaoStore } from '@/stores/autenticacao'
+import { useAutenticacaoStore } from '@/stores/autenticacao.js'
 import {
   HomeIcon,
   CubeIcon,
@@ -133,17 +133,13 @@ const autenticacaoStore = useAutenticacaoStore()
 const usuarioEmail = computed(() => autenticacaoStore.usuario?.email || '')
 
 const submenuAberto = ref({
-  Caixa: false,
-  Relatórios: false
+  Caixa: false
 })
 
 // Abrir submenu automaticamente se a rota atual pertence a ele
 watch(() => route.path, (novoCaminho) => {
   if (novoCaminho.startsWith('/caixa')) {
     submenuAberto.value.Caixa = true
-  }
-  if (novoCaminho.startsWith('/relatorios')) {
-    submenuAberto.value.Relatórios = true
   }
 }, { immediate: true })
 
@@ -167,17 +163,7 @@ const itensMenu = [
   },
   { nome: 'Clientes', rota: '/clientes', icone: UserGroupIcon },
   { nome: 'Financeiro', rota: '/financeiro', icone: CreditCardIcon },
-  {
-    nome: 'Relatórios',
-    icone: DocumentChartBarIcon,
-    rotaBase: '/relatorios',
-    submenu: [
-      { nome: 'Estoque', rota: '/relatorios/estoque', icone: CubeIcon },
-      { nome: 'Caixa', rota: '/relatorios/caixa', icone: CurrencyDollarIcon },
-      { nome: 'Clientes', rota: '/relatorios/clientes', icone: UserGroupIcon },
-      { nome: 'Financeiro', rota: '/relatorios/financeiro', icone: CreditCardIcon }
-    ]
-  }
+  { nome: 'Relatórios', rota: '/relatorios', icone: DocumentChartBarIcon }
 ]
 
 async function fazerLogout() {

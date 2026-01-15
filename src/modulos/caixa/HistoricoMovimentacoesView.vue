@@ -172,7 +172,7 @@ import {
 import { 
   caixaAtual as caixaAtualStore,
   refreshCaixaState
-} from '@/stores/caixa'
+} from '@/stores/caixa.js'
 
 // Use store's reactive ref
 const caixaAtual = caixaAtualStore

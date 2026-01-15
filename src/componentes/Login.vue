@@ -70,7 +70,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAutenticacaoStore } from '@/stores/autenticacao'
+import { useAutenticacaoStore } from '@/stores/autenticacao.js'
 import { ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 
 const email = ref('')
