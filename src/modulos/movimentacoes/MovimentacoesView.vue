@@ -13,44 +13,7 @@
       @fechar="mostrarToast = false"
     />
 
-    <!-- Cards de Resumo -->
-    <div v-if="caixaAtual" class="summary-cards">
-      <div class="summary-card summary-card-entrada">
-        <div class="summary-card-icon summary-icon-entrada">
-          <ArrowUpIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Entradas</div>
-          <div class="summary-card-value summary-value-entrada">
-            {{ formatarMoeda(totalEntradas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saida">
-        <div class="summary-card-icon summary-icon-saida">
-          <ArrowDownIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Saídas</div>
-          <div class="summary-card-value summary-value-saida">
-            {{ formatarMoeda(totalSaidas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saldo">
-        <div class="summary-card-icon summary-icon-saldo">
-          <ArrowsRightLeftIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Saldo Líquido</div>
-          <div class="summary-card-value summary-value-saldo">
-            {{ formatarMoeda(totalEntradas - totalSaidas) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="caixa-fechado-alert">
+    <div v-if="!caixaAtual" class="caixa-fechado-alert">
       <div class="alert-content">
         <ArrowsRightLeftIcon class="alert-icon" />
         <div>
@@ -70,7 +33,6 @@
             </div>
             <div>
               <h3 class="section-title-modern">Registrar Movimentação</h3>
-              <p class="section-subtitle">Adicione uma nova entrada ou saída de valores</p>
             </div>
           </div>
         </div>
@@ -149,6 +111,195 @@
           </form>
         </div>
       </div>
+
+      <!-- Histórico de Movimentações -->
+      <div v-if="caixaAtual" class="movimentacao-history-section">
+        <div class="section-header-modern">
+          <div class="section-header-content">
+            <div class="section-icon-wrapper section-icon-history">
+              <ClockIcon class="section-icon" />
+            </div>
+            <div>
+              <h3 class="section-title-modern">Histórico de Movimentações</h3>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">
+              <ClockIcon class="filter-icon" />
+              Filtrar por data
+            </label>
+            <input
+              v-model="filtroData"
+              type="date"
+              class="form-input form-input-filter-modern"
+              @change="carregarMovimentacoes"
+            />
+          </div>
+        </div>
+        <div class="card card-table-modern">
+          <div v-if="carregando" class="table-loading">
+            <div class="loading-spinner"></div>
+            <p>Carregando movimentações...</p>
+          </div>
+          <div v-else-if="movimentacoes.length === 0" class="table-empty">
+            <ArrowsRightLeftIcon class="empty-icon" />
+            <p class="empty-text">Nenhuma movimentação encontrada</p>
+            <p class="empty-hint">Registre uma nova movimentação para começar</p>
+          </div>
+          <div v-else class="table-container-modern">
+            <table class="tabela tabela-movimentacoes">
+              <thead>
+                <tr>
+                  <th>Data e Hora</th>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Valor</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="(mov, index) in movimentacoes" 
+                  :key="mov.id"
+                  class="table-row-modern"
+                  :style="{ animationDelay: `${index * 0.03}s` }"
+                >
+                  <td>
+                    <div class="table-cell-datetime">
+                      <div class="table-cell-date">{{ new Date(mov.created_at).toLocaleDateString('pt-BR') }}</div>
+                      <div class="table-cell-time">
+                        <ClockIcon class="table-time-icon" />
+                        {{ new Date(mov.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span :class="mov.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
+                      <component :is="mov.tipo === 'entrada' ? ArrowUpIcon : ArrowDownIcon" class="badge-icon" />
+                      <span class="badge-text">{{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}</span>
+                    </span>
+                  </td>
+                  <td>
+                    <div class="table-cell-descricao-wrapper">
+                      <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
+                      <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div :class="mov.tipo === 'entrada' ? 'valor-cell valor-entrada' : 'valor-cell valor-saida'">
+                      <span class="valor-symbol">{{ mov.tipo === 'entrada' ? '+' : '-' }}</span>
+                      <span class="valor-amount">{{ formatarMoeda(mov.valor) }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      @click="abrirDetalhes(mov)"
+                      class="btn-detalhes"
+                      title="Ver detalhes"
+                    >
+                      <InformationCircleIcon class="h-5 w-5" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div v-if="mostrarModalDetalhes" class="modal-overlay" @click.self="fecharDetalhes">
+      <div class="modal-content modal-detalhes">
+        <div class="modal-header">
+          <h3>Detalhes da Movimentação</h3>
+          <button class="btn-close" @click="fecharDetalhes">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="carregandoDetalhes" class="text-center py-4">
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <p>Carregando detalhes...</p>
+          </div>
+          <div v-else-if="movimentacaoSelecionada" class="detalhes-grid">
+            <!-- Informações Básicas -->
+            <div class="detalhe-section">
+              <h4 class="detalhe-titulo">Informações Básicas</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Tipo:</span>
+                <span :class="movimentacaoSelecionada.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
+                  {{ movimentacaoSelecionada.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
+                </span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Valor:</span>
+                <span class="detalhe-valor" :class="movimentacaoSelecionada.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'">
+                  {{ formatarMoeda(movimentacaoSelecionada.valor) }}
+                </span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Data e Hora:</span>
+                <span>{{ formatarDataHora(movimentacaoSelecionada.created_at) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Descrição:</span>
+                <span>{{ movimentacaoSelecionada.descricao }}</span>
+              </div>
+              <div v-if="movimentacaoSelecionada.categoria" class="detalhe-item">
+                <span class="detalhe-label">Categoria:</span>
+                <span class="table-cell-categoria-badge">{{ movimentacaoSelecionada.categoria }}</span>
+              </div>
+            </div>
+
+            <!-- Informações da Venda (se aplicável) -->
+            <div v-if="detalhesVenda" class="detalhe-section">
+              <h4 class="detalhe-titulo">Informações da Venda</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Número da Venda:</span>
+                <span class="font-semibold">{{ detalhesVenda.numero_venda }}</span>
+              </div>
+              <div v-if="detalhesVenda.cliente" class="detalhe-item">
+                <span class="detalhe-label">Cliente:</span>
+                <span>{{ detalhesVenda.cliente }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Forma de Pagamento:</span>
+                <span>{{ formatarFormaPagamento(detalhesVenda.forma_pagamento) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Subtotal:</span>
+                <span>{{ formatarMoeda(detalhesVenda.subtotal) }}</span>
+              </div>
+              <div v-if="detalhesVenda.desconto > 0" class="detalhe-item">
+                <span class="detalhe-label">Desconto:</span>
+                <span class="text-red-600">{{ formatarMoeda(detalhesVenda.desconto) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Total:</span>
+                <span class="font-semibold text-green-600">{{ formatarMoeda(detalhesVenda.total) }}</span>
+              </div>
+              <div v-if="detalhesVenda.observacoes" class="detalhe-item">
+                <span class="detalhe-label">Observações:</span>
+                <span class="text-sm italic">{{ detalhesVenda.observacoes }}</span>
+              </div>
+            </div>
+
+            <!-- Origem Manual -->
+            <div v-else-if="movimentacaoSelecionada.categoria !== 'Vendas'" class="detalhe-section">
+              <h4 class="detalhe-titulo">Origem</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Tipo de Registro:</span>
+                <span class="badge badge-info">Registro Manual</span>
+              </div>
+              <p class="text-sm text-gray-600 mt-2">
+                Esta movimentação foi registrada manualmente através do formulário de movimentações.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" @click="fecharDetalhes">Fechar</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -156,20 +307,28 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
-import { formatarMoeda } from '@/utils/formatadores'
+import { formatarMoeda, formatarDataHora } from '@/utils/formatadores'
 import {
   ArrowsRightLeftIcon,
   PlusIcon,
   ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownIcon,
+  ClockIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 import Toast from '@/componentes/Toast.vue'
 
+const movimentacoes = ref([])
 const carregando = ref(false)
 const erro = ref('')
+const filtroData = ref(new Date().toISOString().split('T')[0])
 const mostrarToast = ref(false)
 const mensagemToast = ref('')
 const caixaAtual = ref(null)
+const mostrarModalDetalhes = ref(false)
+const movimentacaoSelecionada = ref(null)
+const detalhesVenda = ref(null)
+const carregandoDetalhes = ref(false)
 
 const novaMovimentacao = ref({
   tipo: 'entrada',
@@ -178,8 +337,17 @@ const novaMovimentacao = ref({
   categoria: ''
 })
 
-const totalEntradas = ref(0)
-const totalSaidas = ref(0)
+const totalEntradas = computed(() => {
+  return movimentacoes.value
+    .filter(m => m.tipo === 'entrada')
+    .reduce((sum, m) => sum + m.valor, 0)
+})
+
+const totalSaidas = computed(() => {
+  return movimentacoes.value
+    .filter(m => m.tipo === 'saida')
+    .reduce((sum, m) => sum + m.valor, 0)
+})
 
 async function verificarCaixaAberto() {
   try {
@@ -203,7 +371,7 @@ async function verificarCaixaAberto() {
     caixaAtual.value = data
 
     if (caixaAtual.value) {
-      await carregarTotais()
+      await carregarMovimentacoes()
     }
   } catch (err) {
     erro.value = 'Erro ao verificar caixa: ' + err.message
@@ -211,36 +379,99 @@ async function verificarCaixaAberto() {
   }
 }
 
-async function carregarTotais() {
-  if (!caixaAtual.value) return
+function mostrarMensagemSucesso(mensagem) {
+  mensagemToast.value = mensagem
+  mostrarToast.value = true
+}
+
+async function carregarMovimentacoes() {
+  if (!caixaAtual.value) {
+    movimentacoes.value = []
+    return
+  }
+
+  carregando.value = true
+  erro.value = ''
 
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Carregar movimentações com informações relacionadas
     const { data, error } = await supabase
       .from('movimentacoes_caixa')
-      .select('tipo, valor')
+      .select('*')
       .eq('caixa_id', caixaAtual.value.id)
       .eq('usuario_id', user.id)
+      .neq('categoria', 'Vendas')
+      .order('created_at', { ascending: false })
 
     if (error) throw error
-
-    totalEntradas.value = (data || [])
-      .filter(m => m.tipo === 'entrada')
-      .reduce((sum, m) => sum + m.valor, 0)
-
-    totalSaidas.value = (data || [])
-      .filter(m => m.tipo === 'saida')
-      .reduce((sum, m) => sum + m.valor, 0)
+    movimentacoes.value = data || []
   } catch (err) {
-    console.error('Erro ao carregar totais:', err)
+    erro.value = 'Erro ao carregar movimentações: ' + err.message
+    console.error(err)
+  } finally {
+    carregando.value = false
   }
 }
 
-function mostrarMensagemSucesso(mensagem) {
-  mensagemToast.value = mensagem
-  mostrarToast.value = true
+async function abrirDetalhes(movimentacao) {
+  movimentacaoSelecionada.value = movimentacao
+  detalhesVenda.value = null
+  mostrarModalDetalhes.value = true
+  carregandoDetalhes.value = true
+
+  try {
+    // Se for uma movimentação de venda, buscar detalhes
+    if (movimentacao.categoria === 'Vendas' && movimentacao.descricao.includes('Venda')) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Extrair número da venda da descrição
+      const numeroVenda = movimentacao.descricao.replace('Venda ', '').split(' ')[0]
+
+      // Buscar venda
+      const { data: venda, error: errorVenda } = await supabase
+        .from('vendas')
+        .select(`
+          *,
+          clientes (nome)
+        `)
+        .eq('numero_venda', numeroVenda)
+        .eq('usuario_id', user.id)
+        .maybeSingle()
+
+      if (!errorVenda && venda) {
+        detalhesVenda.value = {
+          ...venda,
+          cliente: venda.clientes ? (Array.isArray(venda.clientes) ? venda.clientes[0]?.nome : venda.clientes.nome) : 'Cliente não informado'
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao carregar detalhes:', err)
+  } finally {
+    carregandoDetalhes.value = false
+  }
+}
+
+function fecharDetalhes() {
+  mostrarModalDetalhes.value = false
+  movimentacaoSelecionada.value = null
+  detalhesVenda.value = null
+}
+
+function formatarFormaPagamento(forma) {
+  const formas = {
+    dinheiro: 'Dinheiro',
+    debito: 'Cartão Débito',
+    credito: 'Cartão Crédito',
+    pix: 'PIX',
+    vale: 'Vale/Convênio',
+    mistura: 'Pagamento Misto'
+  }
+  return formas[forma] || forma
 }
 
 async function registrarMovimentacao() {
@@ -255,39 +486,39 @@ async function registrarMovimentacao() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Usuário não autenticado')
 
+    const dadosMovimentacao = {
+      caixa_id: caixaAtual.value.id,
+      usuario_id: user.id,
+      tipo: novaMovimentacao.value.tipo,
+      valor: novaMovimentacao.value.valor,
+      descricao: novaMovimentacao.value.descricao,
+      categoria: novaMovimentacao.value.categoria
+    }
+
     const { error } = await supabase
       .from('movimentacoes_caixa')
-      .insert([{
-        caixa_id: caixaAtual.value.id,
-        usuario_id: user.id,
-        tipo: novaMovimentacao.value.tipo,
-        valor: novaMovimentacao.value.valor,
-        descricao: novaMovimentacao.value.descricao,
-        categoria: novaMovimentacao.value.categoria
-      }])
+      .insert([dadosMovimentacao])
 
     if (error) throw error
 
     mostrarMensagemSucesso('Movimentação registrada com sucesso!')
+    await carregarMovimentacoes()
+    
+    // Disparar evento para atualizar outros componentes
+    window.dispatchEvent(new CustomEvent('movimentacao-registrada', {
+      detail: {
+        ...dadosMovimentacao,
+        atualizouCaixa: true,
+        atualizouRelatorios: true
+      }
+    }))
+
     novaMovimentacao.value = {
       tipo: 'entrada',
       valor: 0,
       descricao: '',
       categoria: ''
     }
-
-    await carregarTotais()
-    
-    // Disparar evento para atualizar outros componentes
-    window.dispatchEvent(new CustomEvent('movimentacao-registrada', {
-      detail: {
-        tipo: novaMovimentacao.value.tipo,
-        valor: novaMovimentacao.value.valor,
-        caixa_id: caixaAtual.value.id,
-        atualizouCaixa: true,
-        atualizouRelatorios: true
-      }
-    }))
   } catch (err) {
     erro.value = 'Erro ao registrar movimentação: ' + err.message
     console.error(err)
@@ -295,7 +526,7 @@ async function registrarMovimentacao() {
 }
 
 function onVendaFinalizada() {
-  carregarTotais()
+  carregarMovimentacoes()
 }
 
 onMounted(() => {
@@ -472,6 +703,10 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   border-radius: 0.75rem;
   flex-shrink: 0;
+}
+
+.section-icon-history {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
 .section-icon {
@@ -669,6 +904,457 @@ onUnmounted(() => {
   height: 1.25rem;
 }
 
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.filter-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+}
+
+.form-input-filter-modern {
+  max-width: 200px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input-filter-modern:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.card-table-modern {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.table-loading,
+.table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid #e5e7eb;
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-icon {
+  width: 4rem;
+  height: 4rem;
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.empty-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-hint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.table-container-modern {
+  overflow-x: auto;
+}
+
+.tabela-movimentacoes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela-movimentacoes thead {
+  background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabela-movimentacoes th {
+  padding: 1.125rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.tabela-movimentacoes th:first-child {
+  padding-left: 1.5rem;
+}
+
+.tabela-movimentacoes th:last-child {
+  text-align: right;
+  padding-right: 1.5rem;
+}
+
+.tabela-movimentacoes tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+  animation: slideInRight 0.4s ease-out forwards;
+  opacity: 0;
+  background: white;
+}
+
+.tabela-movimentacoes tbody tr:last-child {
+  border-bottom: none;
+}
+
+.tabela-movimentacoes tbody tr:hover {
+  background: #f9fafb;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.tabela-movimentacoes tbody td {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #374151;
+  vertical-align: middle;
+}
+
+.tabela-movimentacoes tbody td:last-child {
+  text-align: center;
+  font-weight: 600;
+}
+
+.btn-detalhes {
+  padding: 0.5rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-detalhes:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-detalhes {
+  max-width: 600px;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detalhes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.detalhe-section {
+  background: #f9fafb;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.detalhe-titulo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.detalhe-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detalhe-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detalhe-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.detalhe-valor {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.badge-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-ghost {
+  padding: 0.625rem 1.25rem;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.table-cell-datetime {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.table-cell-date {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.table-cell-time {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.table-time-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #9ca3af;
+}
+
+.table-cell-descricao-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+.table-cell-descricao {
+  font-weight: 500;
+  color: #111827;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.table-cell-categoria-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.valor-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.valor-entrada {
+  color: #10b981;
+}
+
+.valor-saida {
+  color: #ef4444;
+}
+
+.valor-symbol {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.valor-amount {
+  font-size: 1rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.badge-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.badge-text {
+  white-space: nowrap;
+}
+
+.badge-entrada {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border-color: #10b981;
+}
+
+.badge-saida {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border-color: #ef4444;
+}
+
 @media (max-width: 768px) {
   .summary-cards {
     grid-template-columns: 1fr;
@@ -683,6 +1369,21 @@ onUnmounted(() => {
     font-size: 1.25rem;
   }
 
+  .section-header-modern {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .form-input-filter-modern {
+    max-width: 100%;
+    width: 100%;
+  }
+
   .form-movimentacao-modern {
     padding: 1.5rem;
   }
@@ -694,6 +1395,23 @@ onUnmounted(() => {
 
   .tipo-selector {
     flex-direction: column;
+  }
+
+  .tabela-movimentacoes {
+    font-size: 0.8125rem;
+  }
+
+  .tabela-movimentacoes th,
+  .tabela-movimentacoes td {
+    padding: 0.875rem 1rem;
+  }
+
+  .table-cell-descricao-wrapper {
+    max-width: 200px;
+  }
+
+  .valor-cell {
+    font-size: 0.9375rem;
   }
 }
 </style>

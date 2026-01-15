@@ -1266,8 +1266,13 @@ async function finalizarVenda() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Usuário não autenticado')
 
-    // Gerar número da venda
-    const numeroVenda = `V${Date.now()}`
+    // Gerar número sequencial da venda usando a função do banco
+    const { data: numeroVenda, error: numeroError } = await supabase
+      .rpc('get_proximo_numero_venda', { p_caixa_id: props.caixaId })
+    
+    if (numeroError) throw numeroError
+    
+    if (!numeroVenda) throw new Error('Erro ao gerar número da venda')
 
     // Calcular valores de pagamento misto
     let valorRecebidoFinal = total.value
@@ -1338,7 +1343,9 @@ async function finalizarVenda() {
           quantidade: item.quantidade,
           quantidade_anterior: item.produto.quantidade,
           quantidade_nova: novaQuantidade,
-          motivo: `Venda ${numeroVenda} - Venda ID: ${venda.id}`
+          motivo: `Venda ${numeroVenda}`,
+          origem: 'venda',
+          origem_id: venda.id
         }])
 
       if (errorMov) throw errorMov
@@ -1352,11 +1359,32 @@ async function finalizarVenda() {
         usuario_id: user.id,
         tipo: 'entrada',
         valor: total.value,
-        descricao: `Venda ${numeroVenda} - Venda ID: ${venda.id}`,
+        descricao: `Venda ${numeroVenda}`,
         categoria: 'Vendas'
       }])
 
     if (errorCaixa) throw errorCaixa
+
+    window.dispatchEvent(new CustomEvent('movimentacao-estoque-registrada', {
+      detail: {
+        venda_id: venda.id,
+        numero_venda: numeroVenda,
+        atualizouEstoque: true,
+        atualizouRelatorios: true
+      }
+    }))
+
+    window.dispatchEvent(new CustomEvent('movimentacao-registrada', {
+      detail: {
+        tipo: 'entrada',
+        valor: total.value,
+        caixa_id: props.caixaId,
+        descricao: `Venda ${numeroVenda}`,
+        categoria: 'Vendas',
+        atualizouCaixa: true,
+        atualizouRelatorios: true
+      }
+    }))
 
     // Integração com Financeiro: Criar conta a receber se necessário
     if (formaPagamento.value === 'credito' && parcelasCredito.value > 1) {
@@ -1406,6 +1434,15 @@ async function finalizarVenda() {
         console.error('Erro ao criar conta a receber:', errorConta)
       }
     }
+
+    window.dispatchEvent(new CustomEvent('conta-financeira-registrada', {
+      detail: {
+        origem: 'venda',
+        venda_id: venda.id,
+        numero_venda: numeroVenda,
+        atualizouFinanceiro: formaPagamento.value === 'credito' || formaPagamento.value === 'vale'
+      }
+    }))
 
     // Atualizar pontos de fidelidade do cliente (se houver cliente)
     if (clienteSelecionado.value?.id) {

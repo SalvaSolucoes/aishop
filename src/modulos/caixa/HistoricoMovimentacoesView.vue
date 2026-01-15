@@ -1,11 +1,20 @@
 <template>
-  <div class="historico-movimentacoes-view">
+  <div class="movimentacoes-view">
     <div v-if="erro" class="alert alert-erro">
       {{ erro }}
     </div>
 
+    <!-- Toast de Sucesso -->
+    <Toast
+      :mostrar="mostrarToast"
+      :mensagem="mensagemToast"
+      tipo="success"
+      :duracao="3000"
+      @fechar="mostrarToast = false"
+    />
+
     <!-- Cards de Resumo -->
-    <div class="summary-cards">
+    <div v-if="caixaAtual" class="summary-cards">
       <div class="summary-card summary-card-entrada">
         <div class="summary-card-icon summary-icon-entrada">
           <ArrowUpIcon class="summary-icon" />
@@ -41,16 +50,26 @@
       </div>
     </div>
 
+    <div v-else class="caixa-fechado-alert">
+      <div class="alert-content">
+        <ArrowsRightLeftIcon class="alert-icon" />
+        <div>
+          <h4 class="alert-title">Caixa Fechado</h4>
+          <p class="alert-message">Abra um caixa no Carrinho para visualizar o histórico de movimentações</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Histórico de Movimentações -->
-    <div class="movimentacao-history-section">
+    <div v-if="caixaAtual" class="movimentacao-history-section">
       <div class="section-header-modern">
         <div class="section-header-content">
           <div class="section-icon-wrapper section-icon-history">
-            <ClockIcon class="section-icon" />
+            <DocumentTextIcon class="section-icon" />
           </div>
           <div>
             <h3 class="section-title-modern">Histórico de Movimentações</h3>
-            <p class="section-subtitle">Visualize todas as movimentações registradas</p>
+            <p class="section-subtitle">Entradas e saídas registradas no caixa</p>
           </div>
         </div>
         <div class="filter-group">
@@ -66,7 +85,6 @@
           />
         </div>
       </div>
-      
       <div class="card card-table-modern">
         <div v-if="carregando" class="table-loading">
           <div class="loading-spinner"></div>
@@ -75,54 +93,60 @@
         <div v-else-if="movimentacoes.length === 0" class="table-empty">
           <ArrowsRightLeftIcon class="empty-icon" />
           <p class="empty-text">Nenhuma movimentação encontrada</p>
-          <p class="empty-hint">As movimentações registradas aparecerão aqui</p>
+          <p class="empty-hint">Registre uma nova movimentação para começar</p>
         </div>
-        <div v-else class="table-container-modern">
+        <div v-else class="overflow-x-auto -mx-3 sm:mx-0">
           <table class="tabela tabela-movimentacoes">
             <thead>
               <tr>
                 <th>Data e Hora</th>
                 <th>Tipo</th>
                 <th>Descrição</th>
+                <th>Categoria</th>
                 <th>Valor</th>
               </tr>
             </thead>
             <tbody>
               <tr 
-                v-for="(mov, index) in movimentacoes" 
+                v-for="mov in movimentacoes" 
                 :key="mov.id"
                 class="table-row-modern"
-                :style="{ animationDelay: `${index * 0.03}s` }"
               >
-                <td>
-                  <div class="table-cell-datetime">
-                    <div class="table-cell-date">{{ new Date(mov.created_at).toLocaleDateString('pt-BR') }}</div>
-                    <div class="table-cell-time">
-                      <ClockIcon class="table-time-icon" />
-                      {{ new Date(mov.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}
-                    </div>
-                  </div>
+                <td class="table-cell-date">
+                  {{ formatarDataHora(mov.created_at) }}
                 </td>
                 <td>
-                  <span :class="mov.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
-                    <component :is="mov.tipo === 'entrada' ? ArrowUpIcon : ArrowDownIcon" class="badge-icon" />
-                    <span class="badge-text">{{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}</span>
+                  <span 
+                    class="badge badge-modern"
+                    :class="{
+                      'badge-entrada': mov.tipo === 'entrada',
+                      'badge-saida': mov.tipo === 'saida'
+                    }"
+                  >
+                    <ArrowUpIcon v-if="mov.tipo === 'entrada'" class="badge-icon" />
+                    <ArrowDownIcon v-else class="badge-icon" />
+                    {{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
                   </span>
                 </td>
-                <td>
-                  <div class="table-cell-descricao-wrapper">
-                    <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
-                    <div class="badges-container">
-                      <span v-if="mov.numeroVenda" class="venda-tag">#venda{{ mov.numeroVenda }}</span>
-                      <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
-                    </div>
-                  </div>
+                <td class="table-cell-description">
+                  {{ mov.descricao }}
                 </td>
                 <td>
-                  <div :class="mov.tipo === 'entrada' ? 'valor-cell valor-entrada' : 'valor-cell valor-saida'">
-                    <span class="valor-symbol">{{ mov.tipo === 'entrada' ? '+' : '-' }}</span>
-                    <span class="valor-amount">{{ formatarMoeda(mov.valor) }}</span>
-                  </div>
+                  <span v-if="mov.categoria" class="categoria-badge">
+                    {{ mov.categoria }}
+                  </span>
+                  <span v-else class="text-gray-400">-</span>
+                </td>
+                <td>
+                  <span 
+                    class="table-cell-valor"
+                    :class="{
+                      'valor-entrada': mov.tipo === 'entrada',
+                      'valor-saida': mov.tipo === 'saida'
+                    }"
+                  >
+                    {{ mov.tipo === 'entrada' ? '+' : '-' }} {{ formatarMoeda(mov.valor) }}
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -134,77 +158,116 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
 import { formatarMoeda } from '@/utils/formatadores'
+import Toast from '@/componentes/Toast.vue'
 import {
-  ArrowsRightLeftIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  ClockIcon
+  ArrowsRightLeftIcon,
+  DocumentTextIcon,
+  ClockIcon,
 } from '@heroicons/vue/24/outline'
 
+const caixaAtual = ref(null)
 const movimentacoes = ref([])
 const carregando = ref(false)
 const erro = ref('')
-const filtroData = ref(new Date().toISOString().split('T')[0])
+const filtroData = ref('')
+const mostrarToast = ref(false)
+const mensagemToast = ref('')
 
 const totalEntradas = computed(() => {
   return movimentacoes.value
-    .filter(m => m.tipo === 'entrada' || m.tipo === 'suprimento')
-    .reduce((sum, m) => sum + m.valor, 0)
+    .filter(m => m.tipo === 'entrada')
+    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0)
 })
 
 const totalSaidas = computed(() => {
   return movimentacoes.value
-    .filter(m => m.tipo === 'saida' || m.tipo === 'sangria')
-    .reduce((sum, m) => sum + m.valor, 0)
+    .filter(m => m.tipo === 'saida')
+    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0)
 })
 
-async function carregarMovimentacoes() {
-  carregando.value = true
-  erro.value = ''
+onMounted(async () => {
+  await carregarCaixaAtual()
+  if (caixaAtual.value) {
+    await carregarMovimentacoes()
+  }
+})
 
+async function carregarCaixaAtual() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Buscar apenas movimentações que NÃO são vendas
+    const hoje = new Date().toISOString().split('T')[0]
+
     const { data, error } = await supabase
-      .from('movimentacoes_caixa')
+      .from('caixas')
       .select('*')
       .eq('usuario_id', user.id)
-      .neq('categoria', 'Vendas') // Excluir vendas
+      .eq('data', hoje)
+      .is('data_fechamento', null)
+      .maybeSingle()
+
+    if (error) throw error
+    caixaAtual.value = data
+  } catch (err) {
+    console.error('Erro ao carregar caixa:', err)
+    erro.value = 'Erro ao carregar informações do caixa'
+  }
+}
+
+async function carregarMovimentacoes() {
+  if (!caixaAtual.value) return
+
+  try {
+    carregando.value = true
+    let query = supabase
+      .from('movimentacoes_caixa')
+      .select('*')
+      .eq('caixa_id', caixaAtual.value.id)
+      .neq('categoria', 'Vendas')
       .order('created_at', { ascending: false })
+
+    if (filtroData.value) {
+      const dataInicio = new Date(filtroData.value)
+      dataInicio.setHours(0, 0, 0, 0)
+      const dataFim = new Date(filtroData.value)
+      dataFim.setHours(23, 59, 59, 999)
+
+      query = query
+        .gte('created_at', dataInicio.toISOString())
+        .lte('created_at', dataFim.toISOString())
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
     movimentacoes.value = data || []
   } catch (err) {
-    erro.value = 'Erro ao carregar movimentações: ' + err.message
-    console.error(err)
+    console.error('Erro ao carregar movimentações:', err)
+    erro.value = 'Erro ao carregar movimentações'
   } finally {
     carregando.value = false
   }
 }
 
-function onMovimentacaoRegistrada() {
-  carregarMovimentacoes()
+function formatarDataHora(data) {
+  return new Date(data).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
-
-onMounted(() => {
-  carregarMovimentacoes()
-  
-  // Ouvir eventos de movimentação registrada
-  window.addEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
-})
 </script>
 
 <style scoped>
-.historico-movimentacoes-view {
+.movimentacoes-view {
   width: 100%;
 }
 
@@ -293,18 +356,50 @@ onUnmounted(() => {
   color: #0ea5e9;
 }
 
-.movimentacao-history-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+/* Alerta de Caixa Fechado */
+.caixa-fechado-alert {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
 }
 
+.alert-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.alert-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.alert-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #92400e;
+  margin: 0 0 0.25rem 0;
+}
+
+.alert-message {
+  font-size: 0.9375rem;
+  color: #78350f;
+  margin: 0;
+}
+
+/* Section Headers */
 .section-header-modern {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
+  margin-bottom: 1.25rem;
 }
 
 .section-header-content {
@@ -319,9 +414,13 @@ onUnmounted(() => {
   justify-content: center;
   width: 3rem;
   height: 3rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   border-radius: 0.75rem;
   flex-shrink: 0;
+}
+
+.section-icon-history {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
 .section-icon {
@@ -345,6 +444,7 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
+/* Filter Group */
 .filter-group {
   display: flex;
   flex-direction: column;
@@ -382,14 +482,21 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
-.card-table-modern {
+/* Cards */
+.card {
   background: white;
   border-radius: 1rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
+.card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Tables */
 .table-loading,
 .table-empty {
   display: flex;
@@ -404,7 +511,7 @@ onUnmounted(() => {
   width: 2.5rem;
   height: 2.5rem;
   border: 3px solid #e5e7eb;
-  border-top-color: #8b5cf6;
+  border-top-color: #0ea5e9;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 1rem;
@@ -434,88 +541,13 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.table-container-modern {
-  overflow-x: auto;
-}
-
-.tabela-movimentacoes {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.tabela-movimentacoes thead {
-  background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.tabela-movimentacoes th {
-  padding: 1.125rem 1.5rem;
-  text-align: left;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 2px solid #e5e7eb;
-  white-space: nowrap;
-}
-
-.tabela-movimentacoes th:first-child {
-  padding-left: 1.5rem;
-}
-
-.tabela-movimentacoes th:last-child {
-  text-align: right;
-  padding-right: 1.5rem;
-}
-
-.tabela-movimentacoes tbody tr {
+.table-row-modern {
   transition: all 0.2s ease;
-  border-bottom: 1px solid #f3f4f6;
-  animation: slideInRight 0.4s ease-out forwards;
-  opacity: 0;
   background: white;
 }
 
-.tabela-movimentacoes tbody tr:last-child {
-  border-bottom: none;
-}
-
-.tabela-movimentacoes tbody tr:hover {
+.table-row-modern:hover {
   background: #f9fafb;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
-.tabela-movimentacoes tbody td {
-  padding: 1.25rem 1.5rem;
-  text-align: left;
-  font-size: 0.875rem;
-  color: #374151;
-  vertical-align: middle;
-}
-
-.tabela-movimentacoes tbody td:last-child {
-  text-align: right;
-  font-weight: 600;
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.table-cell-datetime {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
 }
 
 .table-cell-date {
@@ -524,73 +556,13 @@ onUnmounted(() => {
   font-size: 0.875rem;
 }
 
-.table-cell-time {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.8125rem;
-  color: #6b7280;
-}
-
-.table-time-icon {
-  width: 0.875rem;
-  height: 0.875rem;
-  color: #9ca3af;
-}
-
-.table-cell-descricao-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.table-cell-description {
+  font-weight: 500;
+  color: #111827;
   max-width: 400px;
 }
 
-.badges-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.venda-tag {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  background: #f3f4f6;
-  color: #ea580c;
-  border: 1.5px solid #ea580c;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: lowercase;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.venda-tag:hover {
-  background: #fff7ed;
-  border-color: #c2410c;
-  color: #c2410c;
-}
-
-.table-cell-descricao {
-  font-weight: 500;
-  color: #111827;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.table-cell-categoria-badge {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  width: fit-content;
-}
-
-.valor-cell {
+.table-cell-valor {
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
@@ -607,16 +579,8 @@ onUnmounted(() => {
   color: #ef4444;
 }
 
-.valor-symbol {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.valor-amount {
-  font-size: 1rem;
-}
-
-.badge {
+/* Badges */
+.badge-modern {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -624,18 +588,12 @@ onUnmounted(() => {
   border-radius: 0.5rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 
 .badge-icon {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
-}
-
-.badge-text {
-  white-space: nowrap;
 }
 
 .badge-entrada {
@@ -650,10 +608,30 @@ onUnmounted(() => {
   border-color: #ef4444;
 }
 
+.categoria-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+/* Responsividade */
 @media (max-width: 768px) {
   .summary-cards {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .summary-card {
+    padding: 1.25rem;
+  }
+
+  .summary-card-value {
+    font-size: 1.25rem;
   }
 
   .section-header-modern {
@@ -669,23 +647,6 @@ onUnmounted(() => {
   .form-input-filter-modern {
     max-width: 100%;
     width: 100%;
-  }
-
-  .tabela-movimentacoes {
-    font-size: 0.8125rem;
-  }
-
-  .tabela-movimentacoes th,
-  .tabela-movimentacoes td {
-    padding: 0.875rem 1rem;
-  }
-
-  .table-cell-descricao-wrapper {
-    max-width: 200px;
-  }
-
-  .valor-cell {
-    font-size: 0.9375rem;
   }
 }
 </style>

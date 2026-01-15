@@ -296,6 +296,12 @@ function fecharModalConta() {
 
 async function salvarConta() {
   await carregarContas()
+  window.dispatchEvent(new CustomEvent('conta-financeira-registrada', {
+    detail: {
+      origem: 'financeiro',
+      tipo: contaSelecionada.value?.id ? 'atualizacao' : 'criacao'
+    }
+  }))
   fecharModalConta()
 }
 
@@ -338,6 +344,13 @@ async function excluirConta(id) {
 
     if (error) throw error
     await carregarContas()
+    window.dispatchEvent(new CustomEvent('conta-financeira-registrada', {
+      detail: {
+        origem: 'financeiro',
+        tipo: 'exclusao',
+        conta_id: id
+      }
+    }))
   } catch (err) {
     erro.value = 'Erro ao excluir conta: ' + err.message
     console.error(err)

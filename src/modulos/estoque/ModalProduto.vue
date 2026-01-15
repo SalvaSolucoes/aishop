@@ -122,14 +122,12 @@
               />
             </div>
             <div class="form-group">
-              <label class="form-label">Margem de Lucro</label>
+              <label class="form-label">Margem de Lucro (%)</label>
               <input
-                v-model.number="dados.margem_lucro"
-                type="number"
+                v-model="margemLucroFormatada"
+                type="text"
                 class="form-input form-input-readonly"
-                min="0"
-                step="0.01"
-                placeholder="0,00"
+                placeholder="0,00%"
                 readonly
               />
               <small class="form-hint">Calculada automaticamente</small>
@@ -142,12 +140,30 @@
           <h4 class="section-title">Classificação</h4>
           <div class="form-group">
             <label class="form-label">Categoria</label>
-            <input
-              v-model="dados.categoria"
-              type="text"
-              class="form-input"
-              placeholder="Nome da categoria"
-            />
+            <div class="relative">
+              <input
+                v-model="dados.categoria"
+                type="text"
+                class="form-input"
+                placeholder="Nome da categoria"
+                @input="buscarCategoriasSugeridas"
+                @focus="mostrarSugestoes = true"
+              />
+              <!-- Lista de Sugestões -->
+              <div v-if="mostrarSugestoes && categoriasSugeridas.length > 0" class="sugestoes-dropdown">
+                <button
+                  v-for="categoria in categoriasSugeridas"
+                  :key="categoria.id"
+                  type="button"
+                  class="sugestao-item"
+                  @click="selecionarCategoria(categoria.nome)"
+                >
+                  <span class="sugestao-nome">{{ categoria.nome }}</span>
+                  <span class="sugestao-badge">Usado {{ categoria.vezes_usado }}x</span>
+                </button>
+              </div>
+            </div>
+            <small class="form-hint">A categoria será salva para sugestões futuras</small>
           </div>
           <div class="form-group">
             <label class="form-label">Descrição</label>
@@ -174,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { supabase } from '@/servicos/supabase'
 
 const props = defineProps({
@@ -203,11 +219,29 @@ const dados = ref({
 const salvando = ref(false)
 const erro = ref('')
 const erroCodigoBarras = ref('')
+const mostrarSugestoes = ref(false)
+const categoriasSugeridas = ref([])
+const timeoutBusca = ref(null)
+
+const margemLucroFormatada = computed(() => {
+  if (!dados.value.margem_lucro || dados.value.margem_lucro === 0) {
+    return '0,00%'
+  }
+  return dados.value.margem_lucro.toFixed(2).replace('.', ',') + '%'
+})
 
 onMounted(() => {
   if (props.produto) {
     dados.value = { ...props.produto }
   }
+  // Carregar categorias ao abrir o modal
+  carregarCategorias()
+  // Fechar sugestões ao clicar fora
+  document.addEventListener('click', fecharSugestoesAoClicarFora)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', fecharSugestoesAoClicarFora)
 })
 
 async function salvar() {
@@ -240,12 +274,106 @@ async function salvar() {
       if (error) throw error
     }
 
+    // Salvar ou atualizar categoria
+    if (dados.value.categoria && dados.value.categoria.trim()) {
+      await salvarCategoria(user.id, dados.value.categoria.trim())
+    }
+
     emit('salvar')
   } catch (err) {
     erro.value = 'Erro ao salvar produto: ' + err.message
     console.error(err)
   } finally {
     salvando.value = false
+  }
+}
+
+async function salvarCategoria(userId, nomeCategoria) {
+  try {
+    // Verificar se a categoria já existe
+    const { data: categoriaExistente } = await supabase
+      .from('categorias_produtos')
+      .select('*')
+      .eq('usuario_id', userId)
+      .eq('nome', nomeCategoria)
+      .maybeSingle()
+
+    if (categoriaExistente) {
+      // Atualizar contador de uso
+      await supabase
+        .from('categorias_produtos')
+        .update({
+          vezes_usado: categoriaExistente.vezes_usado + 1,
+          usado_em: new Date().toISOString()
+        })
+        .eq('id', categoriaExistente.id)
+    } else {
+      // Criar nova categoria
+      await supabase
+        .from('categorias_produtos')
+        .insert([{
+          usuario_id: userId,
+          nome: nomeCategoria,
+          vezes_usado: 1,
+          usado_em: new Date().toISOString()
+        }])
+    }
+  } catch (err) {
+    console.error('Erro ao salvar categoria:', err)
+    // Não bloqueia o salvamento do produto
+  }
+}
+
+async function carregarCategorias() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('categorias_produtos')
+      .select('*')
+      .eq('usuario_id', user.id)
+      .order('vezes_usado', { ascending: false })
+
+    if (error) throw error
+    categoriasSugeridas.value = data || []
+  } catch (err) {
+    console.error('Erro ao carregar categorias:', err)
+  }
+}
+
+function buscarCategoriasSugeridas() {
+  // Debounce para evitar muitas consultas
+  clearTimeout(timeoutBusca.value)
+  
+  timeoutBusca.value = setTimeout(() => {
+    if (!dados.value.categoria || dados.value.categoria.length < 2) {
+      mostrarSugestoes.value = false
+      return
+    }
+
+    const termoBusca = dados.value.categoria.toLowerCase()
+    const sugestoesFiltradas = categoriasSugeridas.value.filter(cat => {
+      return cat.nome.toLowerCase().includes(termoBusca)
+    })
+
+    categoriasSugeridas.value = sugestoesFiltradas
+    mostrarSugestoes.value = sugestoesFiltradas.length > 0
+  }, 300)
+}
+
+function selecionarCategoria(nomeCategoria) {
+  dados.value.categoria = nomeCategoria
+  mostrarSugestoes.value = false
+}
+
+function fecharSugestoesAoClicarFora(event) {
+  // Fechar sugestões se clicar fora do dropdown
+  const dropdown = event.target.closest('.sugestoes-dropdown')
+  const input = event.target.closest('.form-input')
+  
+  if (!dropdown && !input) {
+    mostrarSugestoes.value = false
   }
 }
 
@@ -256,7 +384,9 @@ function fechar() {
 function calcularMargemLucro() {
   if (dados.value.preco_custo > 0 && dados.value.preco_unitario > 0) {
     const lucro = dados.value.preco_unitario - dados.value.preco_custo
-    dados.value.margem_lucro = (lucro / dados.value.preco_custo) * 100
+    const margem = (lucro / dados.value.preco_custo) * 100
+    // Limitar a 2 casas decimais
+    dados.value.margem_lucro = Math.round(margem * 100) / 100
   } else {
     dados.value.margem_lucro = 0
   }
@@ -457,6 +587,73 @@ function validarCodigoBarras() {
   font-size: 0.75rem;
   color: #6b7280;
   line-height: 1.4;
+}
+
+.relative {
+  position: relative;
+}
+
+.sugestoes-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sugestao-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sugestao-item:last-child {
+  border-bottom: none;
+}
+
+.sugestao-item:hover {
+  background: #f9fafb;
+}
+
+.sugestao-nome {
+  font-size: 0.875rem;
+  color: #111827;
+  font-weight: 500;
+}
+
+.sugestao-badge {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
 }
 
 .form-row {

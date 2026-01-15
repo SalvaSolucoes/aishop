@@ -1,24 +1,12 @@
 <template>
   <div class="dashboard">
-    <!-- Header do Dashboard -->
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-title">Dashboard</h1>
-        <p class="dashboard-subtitle">Visão geral do seu negócio</p>
-      </div>
-      <div class="dashboard-date">
-        {{ formatarDataHora(new Date()) }}
-      </div>
-    </div>
-
     <!-- Cards de Métricas Principais -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-content">
           <div class="metric-info">
-            <span class="metric-label">Produtos</span>
+            <span class="metric-label">Produtos em estoque</span>
             <span class="metric-value">{{ totalProdutos }}</span>
-            <span class="metric-hint">em estoque</span>
           </div>
           <div class="metric-icon metric-icon-orange">
             <CubeIcon class="icon" />
@@ -29,11 +17,10 @@
       <div class="metric-card">
         <div class="metric-content">
           <div class="metric-info">
-            <span class="metric-label">Caixa</span>
+            <span class="metric-label">Caixa {{ caixaAberto ? 'Operacional' : 'Indisponível' }}</span>
             <span class="metric-value metric-value-status" :class="caixaAberto ? 'status-open' : 'status-closed'">
               {{ caixaAberto ? 'Aberto' : 'Fechado' }}
             </span>
-            <span class="metric-hint">{{ caixaAberto ? 'Operacional' : 'Indisponível' }}</span>
           </div>
           <div class="metric-icon" :class="caixaAberto ? 'metric-icon-green' : 'metric-icon-red'">
             <CurrencyDollarIcon class="icon" />
@@ -44,9 +31,8 @@
       <div class="metric-card">
         <div class="metric-content">
           <div class="metric-info">
-            <span class="metric-label">Clientes</span>
+            <span class="metric-label">Clientes cadastrados</span>
             <span class="metric-value">{{ totalClientes }}</span>
-            <span class="metric-hint">cadastrados</span>
           </div>
           <div class="metric-icon metric-icon-blue">
             <UserGroupIcon class="icon" />
@@ -57,11 +43,10 @@
       <div class="metric-card">
         <div class="metric-content">
           <div class="metric-info">
-            <span class="metric-label">Saldo</span>
+            <span class="metric-label">Saldo Financeiro</span>
             <span class="metric-value" :class="saldoFinanceiro >= 0 ? 'text-positive' : 'text-negative'">
               {{ formatarMoeda(saldoFinanceiro) }}
             </span>
-            <span class="metric-hint">financeiro</span>
           </div>
           <div class="metric-icon" :class="saldoFinanceiro >= 0 ? 'metric-icon-green' : 'metric-icon-red'">
             <CreditCardIcon class="icon" />
@@ -160,7 +145,7 @@
           <ArrowRightIcon class="module-arrow" />
         </router-link>
 
-        <router-link to="/caixa" class="module-card">
+        <router-link to="/caixa/carrinho" class="module-card">
           <div class="module-icon module-icon-green">
             <CurrencyDollarIcon class="icon" />
           </div>
@@ -209,7 +194,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
 import { formatarMoeda, formatarDataHora } from '@/utils/formatadores'
 import {
@@ -294,7 +279,7 @@ async function carregarVendasRecentes() {
       .select('id, numero_venda, total, created_at')
       .eq('usuario_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(4)
 
     if (error) throw error
     vendasRecentes.value = data || []
@@ -324,7 +309,7 @@ async function carregarProdutosEstoqueBaixo() {
       produtosEstoqueBaixo.value = data
         .filter(p => p.quantidade <= (p.estoque_minimo || 0))
         .sort((a, b) => a.quantidade - b.quantidade)
-        .slice(0, 5)
+        .slice(0, 4)
     } else {
       produtosEstoqueBaixo.value = []
     }
@@ -336,10 +321,40 @@ async function carregarProdutosEstoqueBaixo() {
   }
 }
 
+function onVendaFinalizada() {
+  carregarEstatisticas()
+  carregarVendasRecentes()
+  carregarProdutosEstoqueBaixo()
+}
+
+function onMovimentacaoRegistrada() {
+  carregarEstatisticas()
+}
+
+function onMovimentacaoEstoqueRegistrada() {
+  carregarEstatisticas()
+  carregarProdutosEstoqueBaixo()
+}
+
+function onContaFinanceiraRegistrada() {
+  carregarEstatisticas()
+}
+
 onMounted(() => {
   carregarEstatisticas()
   carregarVendasRecentes()
   carregarProdutosEstoqueBaixo()
+  window.addEventListener('venda-finalizada', onVendaFinalizada)
+  window.addEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
+  window.addEventListener('movimentacao-estoque-registrada', onMovimentacaoEstoqueRegistrada)
+  window.addEventListener('conta-financeira-registrada', onContaFinanceiraRegistrada)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('venda-finalizada', onVendaFinalizada)
+  window.removeEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
+  window.removeEventListener('movimentacao-estoque-registrada', onMovimentacaoEstoqueRegistrada)
+  window.removeEventListener('conta-financeira-registrada', onContaFinanceiraRegistrada)
 })
 </script>
 
@@ -486,6 +501,41 @@ onMounted(() => {
 .metric-icon-indigo {
   background: #e0e7ff;
   color: #4f46e5;
+}
+
+.metric-icon-cyan {
+  background: #cffafe;
+  color: #0891b2;
+}
+
+.module-icon-orange {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.module-icon-green {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.module-icon-cyan {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.module-icon-blue {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.module-icon-purple {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.module-icon-indigo {
+  background: #f3f4f6;
+  color: #111827;
 }
 
 .text-positive {
@@ -751,6 +801,16 @@ onMounted(() => {
 }
 
 /* Responsividade */
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column;
@@ -759,6 +819,15 @@ onMounted(() => {
 
   .metrics-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .metric-card {
+    padding: 0.875rem;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
   }
 
   .dashboard-grid {
@@ -769,10 +838,51 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
+  .module-card {
+    padding: 0.75rem;
+  }
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  .venda-item,
+  .produto-item {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .metric-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .metric-icon .icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+  }
+
+  .metric-value {
+    font-size: 1.25rem;
+  }
+
+  .module-title {
+    font-size: 0.8125rem;
+  }
+
+  .module-description {
+    font-size: 0.7rem;
   }
 }
 </style>

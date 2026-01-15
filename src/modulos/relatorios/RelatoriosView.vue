@@ -1,100 +1,81 @@
 <template>
   <div class="space-y-6">
-    <!-- Header com Seleção de Setor -->
+    <!-- Header com Seleção de Categoria -->
     <div class="card">
       <div class="card-body p-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 class="text-2xl font-bold text-gray-900 mb-1">Relatórios</h2>
-            <p class="text-sm text-gray-600">Análises detalhadas por setor</p>
+            <p class="text-sm text-gray-600">Análises detalhadas por categoria</p>
           </div>
           
-          <!-- Filtros de Período -->
-          <div class="flex flex-wrap items-end gap-3">
-            <div class="flex-1 min-w-[140px]">
-              <label class="form-label text-xs">Data Inicial</label>
-              <input
-                v-model="dataInicial"
-                type="date"
-                class="form-input text-sm"
-                @change="carregarRelatorios"
-              />
-            </div>
-            <div class="flex-1 min-w-[140px]">
-              <label class="form-label text-xs">Data Final</label>
-              <input
-                v-model="dataFinal"
-                type="date"
-                class="form-input text-sm"
-                @change="carregarRelatorios"
-              />
-            </div>
-            <button
-              @click="resetarFiltros"
-              class="btn btn-ghost px-4 py-2 text-sm whitespace-nowrap"
+          <!-- Dropdown de Categoria -->
+          <div class="flex-1 max-w-xs">
+            <label class="form-label text-xs">Selecione uma Categoria</label>
+            <select
+              v-model="categoriaSelecionada"
+              class="form-input text-sm"
             >
-              Limpar
-            </button>
+              <option value="">-- Selecione --</option>
+              <option value="estoque">Estoque</option>
+              <option value="caixa">Caixa</option>
+              <option value="clientes">Clientes</option>
+              <option value="financeiro">Financeiro</option>
+            </select>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Seleção de Setores -->
-    <div class="card">
+    <!-- Estado Inicial - Nenhuma Categoria Selecionada -->
+    <div v-if="!categoriaSelecionada" class="card">
+      <div class="card-body">
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <DocumentChartBarIcon class="h-16 w-16 text-gray-300 mb-4" />
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">Selecione uma Categoria</h3>
+          <p class="text-sm text-gray-600 max-w-md">
+            Para visualizar os relatórios, por favor selecione uma categoria no menu acima.
+            Você pode escolher entre Estoque, Caixa, Clientes ou Financeiro.
+          </p>
+        </div>
+      </div>
+    </div>
+    <!-- Categoria Selecionada - Filtros de Período e Cards de Resumo -->
+    <div v-if="categoriaSelecionada" class="card">
       <div class="card-body p-4">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <button
-            v-for="setor in setores"
-            :key="setor.id"
-            @click="setorSelecionado = setor.id"
-            :class="[
-              'flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all duration-200',
-              setorSelecionado === setor.id
-                ? 'border-orange-600 bg-orange-50 shadow-md'
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-            ]"
-          >
-            <component
-              :is="setor.icone"
-              :class="[
-                'h-6 w-6 transition-colors',
-                setorSelecionado === setor.id ? 'text-orange-600' : 'text-gray-400'
-              ]"
+        <!-- Filtros de Data -->
+        <div class="flex flex-wrap items-end gap-3 mb-4">
+          <div class="flex-1 min-w-[140px]">
+            <label class="form-label text-xs">Data Inicial</label>
+            <input
+              v-model="dataInicial"
+              type="date"
+              class="form-input text-sm"
+              @change="carregarRelatorios"
             />
-            <span
-              :class="[
-                'text-sm font-medium',
-                setorSelecionado === setor.id ? 'text-orange-600' : 'text-gray-600'
-              ]"
-            >
-              {{ setor.nome }}
-            </span>
+          </div>
+          <div class="flex-1 min-w-[140px]">
+            <label class="form-label text-xs">Data Final</label>
+            <input
+              v-model="dataFinal"
+              type="date"
+              class="form-input text-sm"
+              @change="carregarRelatorios"
+            />
+          </div>
+          <button
+            @click="resetarFiltros"
+            class="btn btn-ghost px-4 py-2 text-sm whitespace-nowrap"
+          >
+            Limpar
           </button>
         </div>
-      </div>
-    </div>
 
-    <!-- Loading State -->
-    <div v-if="carregando" class="card">
-      <div class="card-body">
-        <div class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div class="spinner mx-auto mb-4"></div>
-            <p class="text-sm text-gray-500">Carregando relatórios...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Conteúdo por Setor -->
-    <div v-else>
-      <!-- ESTOQUE -->
-      <div v-if="setorSelecionado === 'estoque'" class="space-y-6">
-        <!-- Cards de Resumo -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div class="card">
-            <div class="card-body">
+        <!-- Cards de Resumo por Categoria -->
+        <div v-if="!carregando">
+          <!-- ESTOQUE -->
+          <div v-if="categoriaSelecionada === 'estoque'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="summary-card">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-600 mb-1">Produtos em Estoque</p>
@@ -105,10 +86,8 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="card">
-            <div class="card-body">
+            <div class="summary-card">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-600 mb-1">Valor Total do Estoque</p>
@@ -119,10 +98,8 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="card">
-            <div class="card-body">
+            <div class="summary-card">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-600 mb-1">Produtos com Estoque Baixo</p>
@@ -136,8 +113,162 @@
               </div>
             </div>
           </div>
-        </div>
 
+          <!-- CAIXA -->
+          <div v-if="categoriaSelecionada === 'caixa'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Caixas Fechados</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ resumoCaixa.quantidadeCaixas }}</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                  <CreditCardIcon class="h-6 w-6 text-gray-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Total em Dinheiro</p>
+                  <p class="text-2xl font-bold text-green-600">{{ formatarMoeda(resumoCaixa.totalDinheiro) }}</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg">
+                  <BanknotesIcon class="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Total em Cartão</p>
+                  <p class="text-2xl font-bold text-blue-600">{{ formatarMoeda(resumoCaixa.totalCartao) }}</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg">
+                  <CreditCardIcon class="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Diferença Total</p>
+                  <p class="text-2xl font-bold" :class="resumoCaixa.diferencaTotal >= 0 ? 'text-green-600' : 'text-red-600'">
+                    {{ formatarMoeda(resumoCaixa.diferencaTotal) }}
+                  </p>
+                </div>
+                <div class="p-3 rounded-lg" :class="resumoCaixa.diferencaTotal >= 0 ? 'bg-green-50' : 'bg-red-50'">
+                  <ChartBarIcon class="h-6 w-6" :class="resumoCaixa.diferencaTotal >= 0 ? 'text-green-600' : 'text-red-600'" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CLIENTES -->
+          <div v-if="categoriaSelecionada === 'clientes'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Clientes Ativos</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ resumoGeral.clientesAtivos }}</p>
+                  <p class="text-xs text-gray-500 mt-1">no período</p>
+                </div>
+                <div class="p-3 bg-purple-50 rounded-lg">
+                  <UserGroupIcon class="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Ticket Médio</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ formatarMoeda(resumoGeral.ticketMedio) }}</p>
+                  <p class="text-xs text-gray-500 mt-1">por venda</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg">
+                  <ChartBarIcon class="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Total de Vendas</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ formatarMoeda(resumoGeral.totalVendas) }}</p>
+                  <p class="text-xs text-gray-500 mt-1">{{ resumoGeral.quantidadeVendas }} vendas</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg">
+                  <CurrencyDollarIcon class="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FINANCEIRO -->
+          <div v-if="categoriaSelecionada === 'financeiro'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Total a Receber</p>
+                  <p class="text-2xl font-bold text-green-600">{{ formatarMoeda(resumoFinanceiro.totalReceber) }}</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg">
+                  <ArrowDownCircleIcon class="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Total a Pagar</p>
+                  <p class="text-2xl font-bold text-red-600">{{ formatarMoeda(resumoFinanceiro.totalPagar) }}</p>
+                </div>
+                <div class="p-3 bg-red-50 rounded-lg">
+                  <ArrowUpCircleIcon class="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-600 mb-1">Saldo</p>
+                  <p class="text-2xl font-bold" :class="resumoFinanceiro.saldo >= 0 ? 'text-green-600' : 'text-red-600'">
+                    {{ formatarMoeda(resumoFinanceiro.saldo) }}
+                  </p>
+                </div>
+                <div class="p-3 rounded-lg" :class="resumoFinanceiro.saldo >= 0 ? 'bg-green-50' : 'bg-red-50'">
+                  <ChartBarIcon class="h-6 w-6" :class="resumoFinanceiro.saldo >= 0 ? 'text-green-600' : 'text-red-600'" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="categoriaSelecionada && carregando" class="card">
+      <div class="card-body">
+        <div class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-sm text-gray-500">Carregando relatórios...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo por Categoria -->
+    <div v-else-if="categoriaSelecionada">
+      <!-- ESTOQUE -->
+      <div v-if="categoriaSelecionada === 'estoque'" class="space-y-6">
         <!-- Estoque Baixo -->
         <div class="card">
           <div class="card-header">
@@ -208,68 +339,7 @@
       </div>
 
       <!-- CAIXA -->
-      <div v-if="setorSelecionado === 'caixa'" class="space-y-6">
-        <!-- Cards de Resumo -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Caixas Fechados</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ resumoCaixa.quantidadeCaixas }}</p>
-                </div>
-                <div class="p-3 bg-gray-50 rounded-lg">
-                  <CreditCardIcon class="h-6 w-6 text-gray-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Total em Dinheiro</p>
-                  <p class="text-2xl font-bold text-green-600">{{ formatarMoeda(resumoCaixa.totalDinheiro) }}</p>
-                </div>
-                <div class="p-3 bg-green-50 rounded-lg">
-                  <BanknotesIcon class="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Total em Cartão</p>
-                  <p class="text-2xl font-bold text-blue-600">{{ formatarMoeda(resumoCaixa.totalCartao) }}</p>
-                </div>
-                <div class="p-3 bg-blue-50 rounded-lg">
-                  <CreditCardIcon class="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Diferença Total</p>
-                  <p class="text-2xl font-bold" :class="resumoCaixa.diferencaTotal >= 0 ? 'text-green-600' : 'text-red-600'">
-                    {{ formatarMoeda(resumoCaixa.diferencaTotal) }}
-                  </p>
-                </div>
-                <div class="p-3 rounded-lg" :class="resumoCaixa.diferencaTotal >= 0 ? 'bg-green-50' : 'bg-red-50'">
-                  <ChartBarIcon class="h-6 w-6" :class="resumoCaixa.diferencaTotal >= 0 ? 'text-green-600' : 'text-red-600'" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div v-if="categoriaSelecionada === 'caixa'" class="space-y-6">
         <!-- Fechamentos de Caixa -->
         <div class="card">
           <div class="card-header">
@@ -308,55 +378,7 @@
       </div>
 
       <!-- CLIENTES -->
-      <div v-if="setorSelecionado === 'clientes'" class="space-y-6">
-        <!-- Cards de Resumo -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Clientes Ativos</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ resumoGeral.clientesAtivos }}</p>
-                  <p class="text-xs text-gray-500 mt-1">no período</p>
-                </div>
-                <div class="p-3 bg-purple-50 rounded-lg">
-                  <UserGroupIcon class="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Ticket Médio</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ formatarMoeda(resumoGeral.ticketMedio) }}</p>
-                  <p class="text-xs text-gray-500 mt-1">por venda</p>
-                </div>
-                <div class="p-3 bg-blue-50 rounded-lg">
-                  <ChartBarIcon class="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Total de Vendas</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ formatarMoeda(resumoGeral.totalVendas) }}</p>
-                  <p class="text-xs text-gray-500 mt-1">{{ resumoGeral.quantidadeVendas }} vendas</p>
-                </div>
-                <div class="p-3 bg-green-50 rounded-lg">
-                  <CurrencyDollarIcon class="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div v-if="categoriaSelecionada === 'clientes'" class="space-y-6">
         <!-- Clientes Mais Compradores -->
         <div class="card">
           <div class="card-header">
@@ -391,54 +413,7 @@
       </div>
 
       <!-- FINANCEIRO -->
-      <div v-if="setorSelecionado === 'financeiro'" class="space-y-6">
-        <!-- Cards de Resumo -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Total a Receber</p>
-                  <p class="text-2xl font-bold text-green-600">{{ formatarMoeda(resumoFinanceiro.totalReceber) }}</p>
-                </div>
-                <div class="p-3 bg-green-50 rounded-lg">
-                  <ArrowDownCircleIcon class="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Total a Pagar</p>
-                  <p class="text-2xl font-bold text-red-600">{{ formatarMoeda(resumoFinanceiro.totalPagar) }}</p>
-                </div>
-                <div class="p-3 bg-red-50 rounded-lg">
-                  <ArrowUpCircleIcon class="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 mb-1">Saldo</p>
-                  <p class="text-2xl font-bold" :class="resumoFinanceiro.saldo >= 0 ? 'text-green-600' : 'text-red-600'">
-                    {{ formatarMoeda(resumoFinanceiro.saldo) }}
-                  </p>
-                </div>
-                <div class="p-3 rounded-lg" :class="resumoFinanceiro.saldo >= 0 ? 'bg-green-50' : 'bg-red-50'">
-                  <ChartBarIcon class="h-6 w-6" :class="resumoFinanceiro.saldo >= 0 ? 'text-green-600' : 'text-red-600'" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div v-if="categoriaSelecionada === 'financeiro'" class="space-y-6">
         <!-- Contas Vencidas -->
         <div class="card">
           <div class="card-header">
@@ -495,17 +470,10 @@ import {
   BanknotesIcon,
   ArrowDownCircleIcon,
   ArrowUpCircleIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/vue/24/outline'
 
-// Setores disponíveis
-const setores = [
-  { id: 'estoque', nome: 'Estoque', icone: CubeIcon },
-  { id: 'caixa', nome: 'Caixa', icone: CreditCardIcon },
-  { id: 'clientes', nome: 'Clientes', icone: UserGroupIcon },
-  { id: 'financeiro', nome: 'Financeiro', icone: CurrencyDollarIcon },
-]
-
-const setorSelecionado = ref('estoque')
+const categoriaSelecionada = ref('')
 
 // Datas
 const hoje = new Date()
@@ -561,6 +529,10 @@ function resetarFiltros() {
 }
 
 async function carregarRelatorios() {
+  if (!categoriaSelecionada.value) {
+    return
+  }
+
   carregando.value = true
 
   try {
@@ -572,8 +544,8 @@ async function carregarRelatorios() {
     const dataFim = new Date(dataFinal.value)
     dataFim.setHours(23, 59, 59, 999)
 
-    // Carregar dados baseado no setor selecionado
-    switch (setorSelecionado.value) {
+    // Carregar dados baseado na categoria selecionada
+    switch (categoriaSelecionada.value) {
       case 'estoque':
         await Promise.all([
           carregarResumoEstoque(user.id),
@@ -802,9 +774,11 @@ async function carregarClientesMaisCompradores(userId, dataInicio, dataFim) {
   }
 }
 
-// Observar mudanças no setor selecionado
-watch(setorSelecionado, () => {
-  carregarRelatorios()
+// Observar mudanças na categoria selecionada
+watch(categoriaSelecionada, () => {
+  if (categoriaSelecionada.value) {
+    carregarRelatorios()
+  }
 })
 
 // Listener para recarregar quando uma venda é finalizada
@@ -815,7 +789,7 @@ function onVendaFinalizada() {
 // Listener para recarregar quando uma movimentação é registrada
 function onMovimentacaoRegistrada() {
   // Recarregar apenas seções relevantes (Caixa e Financeiro)
-  if (setorSelecionado.value === 'caixa' || setorSelecionado.value === 'financeiro' || setorSelecionado.value === 'geral') {
+  if (categoriaSelecionada.value === 'caixa' || categoriaSelecionada.value === 'financeiro') {
     carregarRelatorios()
   }
 }
@@ -823,7 +797,7 @@ function onMovimentacaoRegistrada() {
 // Listener para recarregar quando uma movimentação de estoque é registrada
 function onMovimentacaoEstoqueRegistrada() {
   // Recarregar apenas seção de Estoque
-  if (setorSelecionado.value === 'estoque' || setorSelecionado.value === 'geral') {
+  if (categoriaSelecionada.value === 'estoque') {
     carregarRelatorios()
   }
 }
@@ -831,13 +805,13 @@ function onMovimentacaoEstoqueRegistrada() {
 // Listener para recarregar quando uma conta financeira é registrada
 function onContaFinanceiraRegistrada() {
   // Recarregar apenas seção de Financeiro
-  if (setorSelecionado.value === 'financeiro' || setorSelecionado.value === 'geral') {
+  if (categoriaSelecionada.value === 'financeiro') {
     carregarRelatorios()
   }
 }
 
 onMounted(() => {
-  carregarRelatorios()
+  // Não carregar automaticamente, esperar seleção de categoria
   // Escutar eventos de venda finalizada
   window.addEventListener('venda-finalizada', onVendaFinalizada)
   // Escutar eventos de movimentação registrada
@@ -875,5 +849,18 @@ onUnmounted(() => {
 .tabela-financeiro th,
 .tabela-financeiro td {
   text-align: center;
+}
+
+.summary-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.summary-card:hover {
+  background: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 </style>

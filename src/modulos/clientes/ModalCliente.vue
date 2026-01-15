@@ -257,6 +257,7 @@ async function salvar() {
 
     const dadosParaSalvar = {
       ...dados.value,
+      data_nascimento: dados.value.data_nascimento || null,
       usuario_id: user.id
     }
 
