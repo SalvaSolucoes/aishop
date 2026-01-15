@@ -33,26 +33,86 @@
 
       <!-- Navegação -->
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-        <router-link
-          v-for="item in itensMenu"
-          :key="item.rota"
-          :to="item.rota"
-          class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative"
-          :class="
-            $route.path === item.rota || ($route.path === '/' && item.rota === '/')
-              ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-          "
-        >
-          <component :is="item.icone" class="h-5 w-5 flex-shrink-0" />
-          <span v-if="!menuColapsado" class="ml-3">{{ item.nome }}</span>
-          <span
-            v-if="menuColapsado && ($route.path === item.rota || ($route.path === '/' && item.rota === '/'))"
-            class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50"
+        <template v-for="item in itensMenu" :key="item.rota || item.nome">
+          <!-- Item com submenu -->
+          <div v-if="item.submenu">
+            <!-- Item principal (clicável para expandir) -->
+            <button
+              @click="toggleSubmenu(item.nome)"
+              class="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative"
+              :class="
+                isSubmenuActive(item)
+                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              "
+            >
+              <component :is="item.icone" class="h-5 w-5 flex-shrink-0" />
+              <span v-if="!menuColapsado" class="ml-3 flex-1 text-left">{{ item.nome }}</span>
+              <ChevronDownIcon
+                v-if="!menuColapsado"
+                class="h-4 w-4 transition-transform duration-200"
+                :class="submenusAbertos[item.nome] ? 'rotate-180' : ''"
+              />
+              <span
+                v-if="menuColapsado"
+                class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50"
+              >
+                {{ item.nome }}
+              </span>
+            </button>
+
+            <!-- Submenu (dropdown) -->
+            <transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 -translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 -translate-y-1"
+            >
+              <div
+                v-if="submenusAbertos[item.nome] && !menuColapsado"
+                class="mt-1.5 ml-3 mr-1 py-1.5 px-2 bg-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-700/30"
+              >
+                <router-link
+                  v-for="subitem in item.submenu"
+                  :key="subitem.rota"
+                  :to="subitem.rota"
+                  class="flex items-center px-3 py-2 text-sm font-normal rounded-md transition-all duration-150 group relative"
+                  :class="
+                    $route.path === subitem.rota
+                      ? 'bg-orange-500/90 text-white'
+                      : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                  "
+                >
+                  <component :is="subitem.icone" class="h-3.5 w-3.5 flex-shrink-0 opacity-70" />
+                  <span class="ml-2.5 text-xs">{{ subitem.nome }}</span>
+                </router-link>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Item simples (sem submenu) -->
+          <router-link
+            v-else
+            :to="item.rota"
+            class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative"
+            :class="
+              $route.path === item.rota || ($route.path === '/' && item.rota === '/')
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+            "
           >
-            {{ item.nome }}
-          </span>
-        </router-link>
+            <component :is="item.icone" class="h-5 w-5 flex-shrink-0" />
+            <span v-if="!menuColapsado" class="ml-3">{{ item.nome }}</span>
+            <span
+              v-if="menuColapsado && ($route.path === item.rota || ($route.path === '/' && item.rota === '/'))"
+              class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50"
+            >
+              {{ item.nome }}
+            </span>
+          </router-link>
+        </template>
       </nav>
 
       <!-- Footer do Sidebar -->
@@ -105,6 +165,7 @@ import { useAutenticacaoStore } from '@/stores/autenticacao'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   HomeIcon,
   CubeIcon,
   CurrencyDollarIcon,
@@ -116,6 +177,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const menuColapsado = ref(false)
+const submenusAbertos = ref({})
 const rota = useRoute()
 const autenticacaoStore = useAutenticacaoStore()
 
@@ -137,8 +199,14 @@ const tituloPagina = computed(() => {
 const itensMenu = [
   { nome: 'Dashboard', rota: '/', icone: HomeIcon },
   { nome: 'Estoque', rota: '/estoque', icone: CubeIcon },
-  { nome: 'Caixa', rota: '/caixa', icone: CurrencyDollarIcon },
-  { nome: 'Movimentações', rota: '/movimentacoes', icone: ArrowsRightLeftIcon },
+  { 
+    nome: 'Caixa', 
+    icone: CurrencyDollarIcon,
+    submenu: [
+      { nome: 'Caixa', rota: '/caixa', icone: CurrencyDollarIcon },
+      { nome: 'Movimentações', rota: '/movimentacoes', icone: ArrowsRightLeftIcon }
+    ]
+  },
   { nome: 'Clientes', rota: '/clientes', icone: UserGroupIcon },
   { nome: 'Financeiro', rota: '/financeiro', icone: CreditCardIcon },
   { nome: 'Relatórios', rota: '/relatorios', icone: DocumentChartBarIcon }
@@ -146,6 +214,15 @@ const itensMenu = [
 
 function toggleMenu() {
   menuColapsado.value = !menuColapsado.value
+}
+
+function toggleSubmenu(nomeItem) {
+  submenusAbertos.value[nomeItem] = !submenusAbertos.value[nomeItem]
+}
+
+function isSubmenuActive(item) {
+  if (!item.submenu) return false
+  return item.submenu.some(subitem => rota.path === subitem.rota)
 }
 
 async function fazerLogout() {
