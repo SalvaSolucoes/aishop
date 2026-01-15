@@ -320,16 +320,16 @@
               <table class="tabela-estoque min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Estoque</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Produto</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Quantidade</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Valor Estoque</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="produto in produtosParados" :key="produto.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ produto.nome }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ produto.quantidade }} {{ produto.unidade || 'un' }}</td>
-                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ formatarMoeda(produto.quantidade * produto.preco_custo) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ produto.nome }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ produto.quantidade }} {{ produto.unidade || 'un' }}</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-center">{{ formatarMoeda(produto.quantidade * produto.preco_custo) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -353,18 +353,18 @@
               <table class="tabela-caixa min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Inicial</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Final</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Data</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Valor Inicial</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Valor Final</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Diferença</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="caixa in fechamentosCaixa" :key="caixa.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ formatarData(caixa.data) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ formatarMoeda(caixa.valor_inicial) }}</td>
-                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ formatarMoeda(caixa.valor_final || 0) }}</td>
-                    <td class="px-4 py-3 text-sm">
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ formatarData(caixa.data) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ formatarMoeda(caixa.valor_inicial) }}</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-center">{{ formatarMoeda(caixa.valor_final || 0) }}</td>
+                    <td class="px-4 py-3 text-sm text-center">
                       <span :class="caixa.diferenca_caixa >= 0 ? 'font-semibold text-green-600' : 'font-semibold text-red-600'">
                         {{ formatarMoeda(caixa.diferenca_caixa || 0) }}
                       </span>
@@ -392,18 +392,18 @@
               <table class="tabela-clientes min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Total de Compras</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">#</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Cliente</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Total de Compras</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Valor Total</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(cliente, index) in clientesMaisCompradores" :key="cliente.cliente_id || 'sem-cliente'" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ index + 1 }}º</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ cliente.nome || 'Cliente Não Cadastrado' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ cliente.quantidade }} compra(s)</td>
-                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ formatarMoeda(cliente.total) }}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900 text-center">{{ index + 1 }}º</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ cliente.nome || 'Cliente Não Cadastrado' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ cliente.quantidade }} compra(s)</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-center">{{ formatarMoeda(cliente.total) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -428,22 +428,22 @@
               <table class="tabela-financeiro min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
-                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Descrição</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Tipo</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Valor</th>
+                    <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Vencimento</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="conta in contasVencidas" :key="conta.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ conta.descricao }}</td>
-                    <td class="px-4 py-3">
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ conta.descricao }}</td>
+                    <td class="px-4 py-3 text-center">
                       <span :class="conta.tipo === 'receber' ? 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800' : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'">
                         {{ conta.tipo === 'receber' ? 'A Receber' : 'A Pagar' }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ formatarMoeda(conta.valor) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ formatarData(conta.data_vencimento) }}</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-center">{{ formatarMoeda(conta.valor) }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 text-center">{{ formatarData(conta.data_vencimento) }}</td>
                   </tr>
                 </tbody>
               </table>

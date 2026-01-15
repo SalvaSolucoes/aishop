@@ -100,12 +100,12 @@
           <table class="tabela tabela-movimentacoes">
             <thead>
               <tr>
-                <th>Data e Hora</th>
-                <th>Nº Venda</th>
-                <th>Cliente</th>
-                <th>Forma Pagamento</th>
-                <th>Total</th>
-                <th>Ações</th>
+                <th class="text-center">Data e Hora</th>
+                <th class="text-center">Nº Venda</th>
+                <th class="text-center">Cliente</th>
+                <th class="text-center">Forma Pagamento</th>
+                <th class="text-center">Total</th>
+                <th class="text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -114,28 +114,28 @@
                 :key="venda.id"
                 class="table-row-modern"
               >
-                <td class="table-cell-date">
+                <td class="table-cell-date text-center">
                   {{ formatarDataHora(venda.created_at) }}
                 </td>
-                <td>
+                <td class="text-center">
                   <span class="badge badge-modern badge-info">
                     {{ venda.numero_venda }}
                   </span>
                 </td>
-                <td>
+                <td class="text-center">
                   {{ venda.cliente_nome || 'Cliente não informado' }}
                 </td>
-                <td>
+                <td class="text-center">
                   <span class="badge badge-modern" :class="getBadgeClassFormaPagamento(venda.forma_pagamento)">
                     {{ formatarFormaPagamento(venda.forma_pagamento) }}
                   </span>
                 </td>
-                <td>
+                <td class="text-center">
                   <span class="table-cell-valor valor-entrada">
                     {{ formatarMoeda(venda.total) }}
                   </span>
                 </td>
-                <td style="text-align: center;">
+                <td class="text-center" style="text-align: center;">
                   <button
                     @click="abrirDetalhes(venda)"
                     class="btn btn-ghost btn-sm"
@@ -909,6 +909,10 @@ function formatarDataHora(data) {
   font-size: 0.75rem;
   font-weight: 500;
   width: fit-content;
+}
+
+.text-center {
+  text-align: center;
 }
 
 /* Modal Específico */

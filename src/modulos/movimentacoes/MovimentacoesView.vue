@@ -150,11 +150,11 @@
             <table class="tabela tabela-movimentacoes">
               <thead>
                 <tr>
-                  <th>Data e Hora</th>
-                  <th>Tipo</th>
-                  <th>Descrição</th>
-                  <th>Valor</th>
-                  <th>Ações</th>
+                  <th class="text-center">Data e Hora</th>
+                  <th class="text-center">Tipo</th>
+                  <th class="text-center">Descrição</th>
+                  <th class="text-center">Valor</th>
+                  <th class="text-center">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,7 +164,7 @@
                   class="table-row-modern"
                   :style="{ animationDelay: `${index * 0.03}s` }"
                 >
-                  <td>
+                  <td class="text-center">
                     <div class="table-cell-datetime">
                       <div class="table-cell-date">{{ new Date(mov.created_at).toLocaleDateString('pt-BR') }}</div>
                       <div class="table-cell-time">
@@ -173,25 +173,25 @@
                       </div>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <span :class="mov.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
                       <component :is="mov.tipo === 'entrada' ? ArrowUpIcon : ArrowDownIcon" class="badge-icon" />
                       <span class="badge-text">{{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}</span>
                     </span>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <div class="table-cell-descricao-wrapper">
                       <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
                       <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <div :class="mov.tipo === 'entrada' ? 'valor-cell valor-entrada' : 'valor-cell valor-saida'">
                       <span class="valor-symbol">{{ mov.tipo === 'entrada' ? '+' : '-' }}</span>
                       <span class="valor-amount">{{ formatarMoeda(mov.valor) }}</span>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <button
                       @click="abrirDetalhes(mov)"
                       class="btn-detalhes"
@@ -1021,6 +1021,10 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.text-center {
+  text-align: center;
+}
+
 .tabela-movimentacoes th:first-child {
   padding-left: 1.5rem;
 }
@@ -1053,6 +1057,10 @@ onUnmounted(() => {
   font-size: 0.875rem;
   color: #374151;
   vertical-align: middle;
+}
+
+.tabela-movimentacoes tbody td.text-center {
+  text-align: center;
 }
 
 .tabela-movimentacoes tbody td:last-child {

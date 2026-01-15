@@ -85,13 +85,13 @@
       <table v-else class="tabela tabela-financeiro">
         <thead>
           <tr>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Categoria</th>
-            <th>Valor</th>
-            <th>Vencimento</th>
-            <th>Status</th>
-            <th>Ações</th>
+            <th class="text-center">Descrição</th>
+            <th class="text-center">Tipo</th>
+            <th class="text-center">Categoria</th>
+            <th class="text-center">Valor</th>
+            <th class="text-center">Vencimento</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Ações</th>
           </tr>
         </thead>
         <tbody>

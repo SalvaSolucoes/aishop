@@ -99,11 +99,11 @@
           <table class="tabela tabela-movimentacoes">
             <thead>
               <tr>
-                <th>Data e Hora</th>
-                <th>Tipo</th>
-                <th>Descrição</th>
-                <th>Categoria</th>
-                <th>Valor</th>
+                <th class="text-center">Data e Hora</th>
+                <th class="text-center">Tipo</th>
+                <th class="text-center">Descrição</th>
+                <th class="text-center">Categoria</th>
+                <th class="text-center">Valor</th>
               </tr>
             </thead>
             <tbody>
@@ -112,10 +112,10 @@
                 :key="mov.id"
                 class="table-row-modern"
               >
-                <td class="table-cell-date">
+                <td class="table-cell-date text-center">
                   {{ formatarDataHora(mov.created_at) }}
                 </td>
-                <td>
+                <td class="text-center">
                   <span 
                     class="badge badge-modern"
                     :class="{
@@ -128,16 +128,16 @@
                     {{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
                   </span>
                 </td>
-                <td class="table-cell-description">
+                <td class="table-cell-description text-center">
                   {{ mov.descricao }}
                 </td>
-                <td>
+                <td class="text-center">
                   <span v-if="mov.categoria" class="categoria-badge">
                     {{ mov.categoria }}
                   </span>
                   <span v-else class="text-gray-400">-</span>
                 </td>
-                <td>
+                <td class="text-center">
                   <span 
                     class="table-cell-valor"
                     :class="{
@@ -560,6 +560,10 @@ function formatarDataHora(data) {
   font-weight: 500;
   color: #111827;
   max-width: 400px;
+}
+
+.text-center {
+  text-align: center;
 }
 
 .table-cell-valor {
