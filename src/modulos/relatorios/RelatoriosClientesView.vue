@@ -240,5 +240,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import '@/estilos/relatorios-comum.css';
+/* Estilos específicos do componente, se necessário */
 </style>
