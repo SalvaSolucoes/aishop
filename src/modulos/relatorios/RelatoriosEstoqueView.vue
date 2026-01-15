@@ -189,7 +189,11 @@ async function carregarRelatorios() {
 
     if (produtos) {
       resumo.value.totalProdutos = produtos.length
-      resumo.value.valorTotal = produtos.reduce((sum, p) => sum + (p.preco * p.quantidade), 0)
+      resumo.value.valorTotal = produtos.reduce((sum, p) => {
+        const preco = parseFloat(p.preco_unitario) || 0
+        const quantidade = parseFloat(p.quantidade) || 0
+        return sum + (preco * quantidade)
+      }, 0)
       resumo.value.produtosEstoqueBaixo = produtos.filter(p => p.quantidade <= (p.estoque_minimo || 5)).length
       
       produtosEstoqueBaixo.value = produtos
