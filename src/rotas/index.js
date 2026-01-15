@@ -34,6 +34,11 @@ const rotas = [
         component: () => import('@/modulos/movimentacoes/MovimentacoesView.vue')
       },
       {
+        path: 'historico-movimentacoes',
+        name: 'HistoricoMovimentacoes',
+        component: () => import('@/modulos/movimentacoes/HistoricoMovimentacoesView.vue')
+      },
+      {
         path: 'clientes',
         name: 'Clientes',
         component: () => import('@/modulos/clientes/ClientesView.vue')
