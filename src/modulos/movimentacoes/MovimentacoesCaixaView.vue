@@ -11,20 +11,9 @@
           <ArrowUpIcon class="summary-icon" />
         </div>
         <div class="summary-card-content">
-          <div class="summary-card-label">Total de Entradas</div>
+          <div class="summary-card-label">Total de Vendas</div>
           <div class="summary-card-value summary-value-entrada">
             {{ formatarMoeda(totalEntradas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saida">
-        <div class="summary-card-icon summary-icon-saida">
-          <ArrowDownIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Saídas</div>
-          <div class="summary-card-value summary-value-saida">
-            {{ formatarMoeda(totalSaidas) }}
           </div>
         </div>
       </div>
@@ -33,9 +22,9 @@
           <ArrowsRightLeftIcon class="summary-icon" />
         </div>
         <div class="summary-card-content">
-          <div class="summary-card-label">Saldo Líquido</div>
+          <div class="summary-card-label">Quantidade de Vendas</div>
           <div class="summary-card-value summary-value-saldo">
-            {{ formatarMoeda(totalEntradas - totalSaidas) }}
+            {{ movimentacoes.length }}
           </div>
         </div>
       </div>
@@ -50,7 +39,7 @@
           </div>
           <div>
             <h3 class="section-title-modern">Movimentações de Caixa</h3>
-            <p class="section-subtitle">Entradas e saídas (exceto vendas)</p>
+            <p class="section-subtitle">Histórico de vendas realizadas</p>
           </div>
         </div>
         <div class="filter-group">
@@ -74,8 +63,8 @@
         </div>
         <div v-else-if="movimentacoes.length === 0" class="table-empty">
           <ArrowsRightLeftIcon class="empty-icon" />
-          <p class="empty-text">Nenhuma movimentação encontrada</p>
-          <p class="empty-hint">Movimentações de caixa (sangria, suprimento, etc.) aparecerão aqui</p>
+          <p class="empty-text">Nenhuma venda encontrada</p>
+          <p class="empty-hint">As vendas realizadas aparecerão aqui</p>
         </div>
         <div v-else class="table-container-modern">
           <table class="tabela tabela-movimentacoes">
@@ -111,7 +100,12 @@
                   </span>
                 </td>
                 <td>
-                  <div class="table-cell-descricao">{{ mov.descricao }}</div>
+                  <div class="table-cell-descricao-wrapper">
+                    <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
+                    <div class="badges-container">
+                      <span v-if="mov.numeroVenda" class="venda-tag">#venda{{ mov.numeroVenda }}</span>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
@@ -150,14 +144,13 @@ const filtroData = ref(new Date().toISOString().split('T')[0])
 
 const totalEntradas = computed(() => {
   return movimentacoes.value
-    .filter(m => m.tipo === 'entrada' || m.tipo === 'suprimento')
+    .filter(m => m.isVenda && m.tipo === 'entrada')
     .reduce((sum, m) => sum + m.valor, 0)
 })
 
 const totalSaidas = computed(() => {
-  return movimentacoes.value
-    .filter(m => m.tipo === 'saida' || m.tipo === 'sangria')
-    .reduce((sum, m) => sum + m.valor, 0)
+  // Para vendas, não há saídas
+  return 0
 })
 
 function formatarTipo(tipo) {
@@ -198,52 +191,46 @@ async function carregarMovimentacoes() {
       })
     })
 
-    // Buscar movimentações
+    // Buscar movimentações que são vendas
     const { data: movimentacoesData, error: errorMov } = await supabase
       .from('movimentacoes_caixa')
       .select('*')
       .eq('usuario_id', user.id)
+      .eq('tipo', 'entrada')
+      .or('categoria.ilike.%venda%,descricao.ilike.%venda%')
       .order('created_at', { ascending: false })
 
     if (errorMov) throw errorMov
 
     // Processar movimentações e tentar identificar vendas
     const movimentacoesProcessadas = (movimentacoesData || []).map(mov => {
-      // Verificar se é uma entrada que pode ser venda
-      // Critérios: tipo entrada + (categoria venda OU descrição contém "Venda")
-      const isVenda = mov.tipo === 'entrada' && 
-                      (mov.categoria?.toLowerCase() === 'venda' || 
-                       mov.descricao?.toLowerCase().includes('venda'))
+      // Tentar encontrar venda correspondente pelo caixa_id e timestamp próximo
+      const vendasDoCaixa = Array.from(vendasMap.values()).filter(v => v.caixa_id === mov.caixa_id)
       
-      if (isVenda) {
-        // Tentar encontrar venda correspondente pelo caixa_id e timestamp próximo
-        const vendasDoCaixa = Array.from(vendasMap.values()).filter(v => v.caixa_id === mov.caixa_id)
-        
-        // Encontrar venda com timestamp mais próximo (dentro de 10 segundos)
-        let vendaMaisProxima = null
-        let menorDiferenca = Infinity
-        
-        vendasDoCaixa.forEach(venda => {
-          const diffMs = Math.abs(new Date(venda.created_at) - new Date(mov.created_at))
-          if (diffMs < 10000 && diffMs < menorDiferenca) { // Menos de 10 segundos
-            menorDiferenca = diffMs
-            vendaMaisProxima = venda
-          }
-        })
-        
-        if (vendaMaisProxima) {
-          return {
-            ...mov,
-            numeroVenda: vendaMaisProxima.numeroSequencial,
-            numeroVendaOriginal: vendaMaisProxima.numero_venda,
-            isVenda: true
-          }
+      // Encontrar venda com timestamp mais próximo (dentro de 10 segundos)
+      let vendaMaisProxima = null
+      let menorDiferenca = Infinity
+      
+      vendasDoCaixa.forEach(venda => {
+        const diffMs = Math.abs(new Date(venda.created_at) - new Date(mov.created_at))
+        if (diffMs < 10000 && diffMs < menorDiferenca) { // Menos de 10 segundos
+          menorDiferenca = diffMs
+          vendaMaisProxima = venda
+        }
+      })
+      
+      if (vendaMaisProxima) {
+        return {
+          ...mov,
+          numeroVenda: vendaMaisProxima.numeroSequencial,
+          numeroVendaOriginal: vendaMaisProxima.numero_venda,
+          isVenda: true
         }
       }
       
       return {
         ...mov,
-        isVenda: false
+        isVenda: true
       }
     })
 
@@ -280,9 +267,10 @@ onUnmounted(() => {
 /* Cards de Resumo */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2.5rem;
+  max-width: 800px;
 }
 
 .summary-card {
@@ -602,6 +590,40 @@ onUnmounted(() => {
   color: #9ca3af;
 }
 
+.table-cell-descricao-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+.badges-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.venda-tag {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #ea580c;
+  border: 1.5px solid #ea580c;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.venda-tag:hover {
+  background: #fff7ed;
+  border-color: #c2410c;
+  color: #c2410c;
+}
+
 .table-cell-descricao {
   font-weight: 500;
   color: #111827;
@@ -707,6 +729,10 @@ onUnmounted(() => {
   .tabela-movimentacoes th,
   .tabela-movimentacoes td {
     padding: 0.875rem 1rem;
+  }
+
+  .table-cell-descricao-wrapper {
+    max-width: 200px;
   }
 }
 </style>
