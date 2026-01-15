@@ -407,7 +407,7 @@ onUnmounted(() => {
   if (autoCloseTimer.value) {
     clearInterval(autoCloseTimer.value)
   }
-}
+})
 </script>
 
 <style scoped>
