@@ -20,20 +20,9 @@
           <ArrowUpIcon class="summary-icon" />
         </div>
         <div class="summary-card-content">
-          <div class="summary-card-label">Total de Entradas</div>
+          <div class="summary-card-label">Total de Vendas</div>
           <div class="summary-card-value summary-value-entrada">
             {{ formatarMoeda(totalEntradas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saida">
-        <div class="summary-card-icon summary-icon-saida">
-          <ArrowDownIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Saídas</div>
-          <div class="summary-card-value summary-value-saida">
-            {{ formatarMoeda(totalSaidas) }}
           </div>
         </div>
       </div>
@@ -42,9 +31,9 @@
           <ArrowsRightLeftIcon class="summary-icon" />
         </div>
         <div class="summary-card-content">
-          <div class="summary-card-label">Saldo Líquido</div>
+          <div class="summary-card-label">Quantidade de Vendas</div>
           <div class="summary-card-value summary-value-saldo">
-            {{ formatarMoeda(totalEntradas - totalSaidas) }}
+            {{ movimentacoes.length }}
           </div>
         </div>
       </div>
@@ -68,8 +57,13 @@
             <DocumentTextIcon class="section-icon" />
           </div>
           <div>
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
             <h3 class="section-title-modern">Histórico de Movimentações</h3>
             <p class="section-subtitle">Entradas e saídas registradas no caixa</p>
+=======
+            <h3 class="section-title-modern">Movimentações de Caixa</h3>
+            <p class="section-subtitle">Histórico de vendas realizadas</p>
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
           </div>
         </div>
         <div class="filter-group">
@@ -92,8 +86,13 @@
         </div>
         <div v-else-if="movimentacoes.length === 0" class="table-empty">
           <ArrowsRightLeftIcon class="empty-icon" />
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
           <p class="empty-text">Nenhuma movimentação encontrada</p>
           <p class="empty-hint">Registre uma nova movimentação para começar</p>
+=======
+          <p class="empty-text">Nenhuma venda encontrada</p>
+          <p class="empty-hint">As vendas realizadas aparecerão aqui</p>
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
         </div>
         <div v-else class="overflow-x-auto -mx-3 sm:mx-0">
           <table class="tabela tabela-movimentacoes">
@@ -128,8 +127,18 @@
                     {{ mov.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
                   </span>
                 </td>
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
                 <td class="table-cell-description">
                   {{ mov.descricao }}
+=======
+                <td>
+                  <div class="table-cell-descricao-wrapper">
+                    <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
+                    <div class="badges-container">
+                      <span v-if="mov.numeroVenda" class="venda-tag">#venda{{ mov.numeroVenda }}</span>
+                    </div>
+                  </div>
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
                 </td>
                 <td>
                   <span v-if="mov.categoria" class="categoria-badge">
@@ -180,6 +189,7 @@ const mensagemToast = ref('')
 
 const totalEntradas = computed(() => {
   return movimentacoes.value
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
     .filter(m => m.tipo === 'entrada')
     .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0)
 })
@@ -188,6 +198,15 @@ const totalSaidas = computed(() => {
   return movimentacoes.value
     .filter(m => m.tipo === 'saida')
     .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0)
+=======
+    .filter(m => m.isVenda && m.tipo === 'entrada')
+    .reduce((sum, m) => sum + m.valor, 0)
+})
+
+const totalSaidas = computed(() => {
+  // Para vendas, não há saídas
+  return 0
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
 })
 
 onMounted(async () => {
@@ -204,6 +223,7 @@ async function carregarCaixaAtual() {
 
     const hoje = new Date().toISOString().split('T')[0]
 
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
     const { data, error } = await supabase
       .from('caixas')
       .select('*')
@@ -230,6 +250,28 @@ async function carregarMovimentacoes() {
       .select('*')
       .eq('caixa_id', caixaAtual.value.id)
       .neq('categoria', 'Vendas')
+=======
+    if (errorVendas) throw errorVendas
+
+    // Criar mapa de vendas com numeração sequencial
+    const vendasMap = new Map()
+    let numeroSequencial = 1
+    
+    ;(vendasData || []).forEach(venda => {
+      vendasMap.set(venda.id, {
+        ...venda,
+        numeroSequencial: numeroSequencial++
+      })
+    })
+
+    // Buscar movimentações que são vendas
+    const { data: movimentacoesData, error: errorMov } = await supabase
+      .from('movimentacoes_caixa')
+      .select('*')
+      .eq('usuario_id', user.id)
+      .eq('tipo', 'entrada')
+      .or('categoria.ilike.%venda%,descricao.ilike.%venda%')
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
       .order('created_at', { ascending: false })
 
     if (filtroData.value) {
@@ -238,10 +280,44 @@ async function carregarMovimentacoes() {
       const dataFim = new Date(filtroData.value)
       dataFim.setHours(23, 59, 59, 999)
 
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
       query = query
         .gte('created_at', dataInicio.toISOString())
         .lte('created_at', dataFim.toISOString())
     }
+=======
+    // Processar movimentações e tentar identificar vendas
+    const movimentacoesProcessadas = (movimentacoesData || []).map(mov => {
+      // Tentar encontrar venda correspondente pelo caixa_id e timestamp próximo
+      const vendasDoCaixa = Array.from(vendasMap.values()).filter(v => v.caixa_id === mov.caixa_id)
+      
+      // Encontrar venda com timestamp mais próximo (dentro de 10 segundos)
+      let vendaMaisProxima = null
+      let menorDiferenca = Infinity
+      
+      vendasDoCaixa.forEach(venda => {
+        const diffMs = Math.abs(new Date(venda.created_at) - new Date(mov.created_at))
+        if (diffMs < 10000 && diffMs < menorDiferenca) { // Menos de 10 segundos
+          menorDiferenca = diffMs
+          vendaMaisProxima = venda
+        }
+      })
+      
+      if (vendaMaisProxima) {
+        return {
+          ...mov,
+          numeroVenda: vendaMaisProxima.numeroSequencial,
+          numeroVendaOriginal: vendaMaisProxima.numero_venda,
+          isVenda: true
+        }
+      }
+      
+      return {
+        ...mov,
+        isVenda: true
+      }
+    })
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
 
     const { data, error } = await query
 
@@ -274,9 +350,10 @@ function formatarDataHora(data) {
 /* Cards de Resumo */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2.5rem;
+  max-width: 800px;
 }
 
 .summary-card {
@@ -556,7 +633,59 @@ function formatarDataHora(data) {
   font-size: 0.875rem;
 }
 
+<<<<<<< HEAD:src/modulos/caixa/HistoricoMovimentacoesView.vue
 .table-cell-description {
+=======
+.table-cell-time {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.table-time-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #9ca3af;
+}
+
+.table-cell-descricao-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+.badges-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.venda-tag {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #ea580c;
+  border: 1.5px solid #ea580c;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.venda-tag:hover {
+  background: #fff7ed;
+  border-color: #c2410c;
+  color: #c2410c;
+}
+
+.table-cell-descricao {
+>>>>>>> 6f95e6789f87e56b68f70943542ac699025d8dc6:src/modulos/movimentacoes/MovimentacoesCaixaView.vue
   font-weight: 500;
   color: #111827;
   max-width: 400px;
@@ -647,6 +776,10 @@ function formatarDataHora(data) {
   .form-input-filter-modern {
     max-width: 100%;
     width: 100%;
+  }
+
+  .table-cell-descricao-wrapper {
+    max-width: 200px;
   }
 }
 </style>
