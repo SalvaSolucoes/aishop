@@ -75,7 +75,10 @@
                 <td>
                   <div class="table-cell-descricao-wrapper">
                     <div class="table-cell-descricao" :title="mov.descricao">{{ mov.descricao }}</div>
-                    <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
+                    <div class="badges-container">
+                      <span v-if="mov.numeroVenda" class="venda-tag">#venda{{ mov.numeroVenda }}</span>
+                      <span v-if="mov.categoria" class="table-cell-categoria-badge">{{ mov.categoria }}</span>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -117,14 +120,76 @@ async function carregarMovimentacoes() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data, error } = await supabase
+    // Buscar todas as vendas do usuário em ordem cronológica
+    const { data: vendasData, error: errorVendas } = await supabase
+      .from('vendas')
+      .select('id, numero_venda, created_at, caixa_id, total')
+      .eq('usuario_id', user.id)
+      .order('created_at', { ascending: true })
+
+    if (errorVendas) throw errorVendas
+
+    // Criar mapa de vendas com numeração sequencial
+    const vendasMap = new Map()
+    let numeroSequencial = 1
+    
+    ;(vendasData || []).forEach(venda => {
+      vendasMap.set(venda.id, {
+        ...venda,
+        numeroSequencial: numeroSequencial++
+      })
+    })
+
+    // Buscar movimentações
+    const { data: movimentacoesData, error: errorMov } = await supabase
       .from('movimentacoes_caixa')
       .select('*')
       .eq('usuario_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-    movimentacoes.value = data || []
+    if (errorMov) throw errorMov
+
+    // Processar movimentações e tentar identificar vendas
+    const movimentacoesProcessadas = (movimentacoesData || []).map(mov => {
+      // Verificar se é uma entrada que pode ser venda
+      // Critérios: tipo entrada + (categoria venda OU descrição contém "Venda")
+      const isVenda = mov.tipo === 'entrada' && 
+                      (mov.categoria?.toLowerCase() === 'venda' || 
+                       mov.descricao?.toLowerCase().includes('venda'))
+      
+      if (isVenda) {
+        // Tentar encontrar venda correspondente pelo caixa_id e timestamp próximo
+        const vendasDoCaixa = Array.from(vendasMap.values()).filter(v => v.caixa_id === mov.caixa_id)
+        
+        // Encontrar venda com timestamp mais próximo (dentro de 10 segundos)
+        let vendaMaisProxima = null
+        let menorDiferenca = Infinity
+        
+        vendasDoCaixa.forEach(venda => {
+          const diffMs = Math.abs(new Date(venda.created_at) - new Date(mov.created_at))
+          if (diffMs < 10000 && diffMs < menorDiferenca) { // Menos de 10 segundos
+            menorDiferenca = diffMs
+            vendaMaisProxima = venda
+          }
+        })
+        
+        if (vendaMaisProxima) {
+          return {
+            ...mov,
+            numeroVenda: vendaMaisProxima.numeroSequencial,
+            numeroVendaOriginal: vendaMaisProxima.numero_venda,
+            isVenda: true
+          }
+        }
+      }
+      
+      return {
+        ...mov,
+        isVenda: false
+      }
+    })
+
+    movimentacoes.value = movimentacoesProcessadas
   } catch (err) {
     erro.value = 'Erro ao carregar movimentações: ' + err.message
     console.error(err)
@@ -404,6 +469,33 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.5rem;
   max-width: 400px;
+}
+
+.badges-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.venda-tag {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #ea580c;
+  border: 1.5px solid #ea580c;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.venda-tag:hover {
+  background: #fff7ed;
+  border-color: #c2410c;
+  color: #c2410c;
 }
 
 .table-cell-descricao {
