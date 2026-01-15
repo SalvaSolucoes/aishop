@@ -1,17 +1,5 @@
--- ============================================================================
--- AIShop - Migration 003 - Recent Updates
--- ============================================================================
--- This migration includes all recent features:
--- 1. Category suggestions system for products
--- 2. Movement history with sale details tracking
--- 3. Sequential sales numbering with daily reset
--- ============================================================================
 
--- ==========================
--- 1. CREATE BASE TABLES FIRST (no dependencies)
--- ==========================
-
--- Clients table (no dependencies)
+-- Tabela de clientes (sem dependências)
 CREATE TABLE IF NOT EXISTS clientes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -28,7 +16,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Products table (no dependencies)
+-- Tabela de produtos (sem dependências)
 CREATE TABLE IF NOT EXISTS produtos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -47,7 +35,7 @@ CREATE TABLE IF NOT EXISTS produtos (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Categories table (no dependencies)
+-- Tabela de categorias (sem dependências)
 CREATE TABLE IF NOT EXISTS categorias_produtos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -57,7 +45,7 @@ CREATE TABLE IF NOT EXISTS categorias_produtos (
   UNIQUE(usuario_id, nome)
 );
 
--- Financial accounts table (no dependencies)
+-- Tabela de contas financeiras (sem dependências)
 CREATE TABLE IF NOT EXISTS contas_financeiras (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -73,11 +61,7 @@ CREATE TABLE IF NOT EXISTS contas_financeiras (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ==========================
--- 2. CREATE TABLES WITH DEPENDENCIES
--- ==========================
-
--- Cashier table (no dependencies on other app tables)
+-- Tabela de caixas (sem dependências de outras tabelas da aplicação)
 CREATE TABLE IF NOT EXISTS caixas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -102,7 +86,7 @@ CREATE TABLE IF NOT EXISTS caixas (
   UNIQUE(usuario_id, data)
 );
 
--- Sales table (depends on caixas and clientes)
+-- Tabela de vendas (depende de caixas e clientes)
 CREATE TABLE IF NOT EXISTS vendas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   caixa_id UUID REFERENCES caixas(id) ON DELETE CASCADE NOT NULL,
@@ -119,7 +103,7 @@ CREATE TABLE IF NOT EXISTS vendas (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Sale items table (depends on vendas and produtos)
+-- Tabela de itens de venda (depende de vendas e produtos)
 CREATE TABLE IF NOT EXISTS itens_venda (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   venda_id UUID REFERENCES vendas(id) ON DELETE CASCADE NOT NULL,
@@ -131,7 +115,7 @@ CREATE TABLE IF NOT EXISTS itens_venda (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Stock movements table (depends on produtos)
+-- Tabela de movimentações de estoque (depende de produtos)
 CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   produto_id UUID REFERENCES produtos(id) ON DELETE CASCADE NOT NULL,
@@ -146,7 +130,7 @@ CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Cashier movements table (depends on caixas)
+-- Tabela de movimentações de caixa (depende de caixas)
 CREATE TABLE IF NOT EXISTS movimentacoes_caixa (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   caixa_id UUID REFERENCES caixas(id) ON DELETE CASCADE NOT NULL,
@@ -158,36 +142,28 @@ CREATE TABLE IF NOT EXISTS movimentacoes_caixa (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ==========================
--- 3. ADD NEW COLUMNS TO EXISTING TABLES
--- ==========================
-
--- Add fields to caixas if they don't exist
+-- Adicionar campos à tabela caixas se não existirem
 DO $$ 
 BEGIN
-  -- Add ultima_sequencia_venda if not exists
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='caixas' AND column_name='ultima_sequencia_venda') THEN
     ALTER TABLE caixas ADD COLUMN ultima_sequencia_venda INTEGER DEFAULT 0;
   END IF;
   
-  -- Add motivo_fechamento if not exists
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='caixas' AND column_name='motivo_fechamento') THEN
     ALTER TABLE caixas ADD COLUMN motivo_fechamento TEXT;
   END IF;
 END $$;
 
--- Add origin tracking fields to movimentacoes_estoque
+-- Adicionar campos de rastreamento de origem à movimentacoes_estoque
 DO $$ 
 BEGIN
-  -- Add origem if not exists
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='movimentacoes_estoque' AND column_name='origem') THEN
     ALTER TABLE movimentacoes_estoque ADD COLUMN origem VARCHAR(50);
   END IF;
   
-  -- Add origem_id if not exists
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='movimentacoes_estoque' AND column_name='origem_id') THEN
     ALTER TABLE movimentacoes_estoque ADD COLUMN origem_id UUID;
@@ -222,25 +198,21 @@ BEGIN
   END IF;
 END $$;
 
--- ==========================
--- 4. CREATE INDEXES
--- ==========================
-
--- Indexes for categorias_produtos
+-- Índices para categorias_produtos
 CREATE INDEX IF NOT EXISTS idx_categorias_usuario ON categorias_produtos(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_categorias_nome ON categorias_produtos(nome);
 
--- Indexes for produtos
+-- Índices para produtos
 CREATE INDEX IF NOT EXISTS idx_produtos_usuario ON produtos(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_produtos_nome ON produtos(nome);
 CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos(codigo);
 CREATE INDEX IF NOT EXISTS idx_produtos_categoria ON produtos(categoria);
 
--- Indexes for caixas
+-- Índices para caixas
 CREATE INDEX IF NOT EXISTS idx_caixas_usuario_data ON caixas(usuario_id, data);
 CREATE INDEX IF NOT EXISTS idx_caixas_data ON caixas(data DESC);
 
--- Indexes for vendas
+-- Índices para vendas
 CREATE INDEX IF NOT EXISTS idx_vendas_numero_venda ON vendas(numero_venda);
 CREATE INDEX IF NOT EXISTS idx_vendas_caixa ON vendas(caixa_id);
 CREATE INDEX IF NOT EXISTS idx_vendas_cliente ON vendas(cliente_id);
@@ -248,52 +220,45 @@ CREATE INDEX IF NOT EXISTS idx_vendas_usuario ON vendas(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_vendas_created ON vendas(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_vendas_usuario_data ON vendas(usuario_id, created_at);
 
--- Indexes for itens_venda
+-- Índices para itens_venda
 CREATE INDEX IF NOT EXISTS idx_itens_venda_venda ON itens_venda(venda_id);
 CREATE INDEX IF NOT EXISTS idx_itens_venda_produto ON itens_venda(produto_id);
 
--- Indexes for movimentacoes_estoque
+-- Índices para movimentacoes_estoque
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_estoque_produto ON movimentacoes_estoque(produto_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_estoque_origem ON movimentacoes_estoque(origem, origem_id);
 
--- Indexes for movimentacoes_caixa
+-- Índices para movimentacoes_caixa
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_caixa_caixa ON movimentacoes_caixa(caixa_id);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_caixa_usuario ON movimentacoes_caixa(usuario_id);
 
--- Indexes for clientes
+-- Índices para clientes
 CREATE INDEX IF NOT EXISTS idx_clientes_usuario ON clientes(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes(nome);
 
--- Indexes for contas_financeiras
+-- Índices para contas_financeiras
 CREATE INDEX IF NOT EXISTS idx_contas_usuario ON contas_financeiras(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_contas_vencimento ON contas_financeiras(data_vencimento);
 CREATE INDEX IF NOT EXISTS idx_contas_status ON contas_financeiras(status);
 
--- ==========================
--- 5. CREATE FUNCTION FOR SALES NUMBERING
--- ==========================
 
 CREATE OR REPLACE FUNCTION get_proximo_numero_venda(p_caixa_id UUID)
 RETURNS TEXT AS $$
 DECLARE
   v_sequencia INTEGER;
 BEGIN
-  -- Update and get next sequence
+  -- Atualizar e obter próxima sequência
   UPDATE caixas 
   SET ultima_sequencia_venda = COALESCE(ultima_sequencia_venda, 0) + 1
   WHERE id = p_caixa_id
   RETURNING ultima_sequencia_venda INTO v_sequencia;
   
-  -- Return in format #venda1, #venda2, etc.
+  -- Retornar no formato #venda1, #venda2, etc.
   RETURN '#venda' || v_sequencia;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ==========================
--- 6. ROW LEVEL SECURITY
--- ==========================
-
--- Enable RLS on all tables
+-- Habilitar RLS em todas as tabelas
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE caixas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
@@ -303,7 +268,7 @@ ALTER TABLE movimentacoes_caixa ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contas_financeiras ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if they exist
+-- Remover políticas existentes se houverem
 DROP POLICY IF EXISTS policy_produtos_all ON produtos;
 DROP POLICY IF EXISTS policy_caixas_all ON caixas;
 DROP POLICY IF EXISTS policy_vendas_all ON vendas;
@@ -313,22 +278,22 @@ DROP POLICY IF EXISTS policy_movimentacoes_caixa_all ON movimentacoes_caixa;
 DROP POLICY IF EXISTS policy_clientes_all ON clientes;
 DROP POLICY IF EXISTS policy_contas_financeiras_all ON contas_financeiras;
 
--- Create policies for produtos
+-- Criar políticas para produtos
 CREATE POLICY policy_produtos_all ON produtos
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for caixas
+-- Criar políticas para caixas
 CREATE POLICY policy_caixas_all ON caixas
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for vendas
+-- Criar políticas para vendas
 CREATE POLICY policy_vendas_all ON vendas
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for itens_venda (allows access through venda)
+-- Criar políticas para itens_venda (permite acesso através de venda)
 CREATE POLICY policy_itens_venda_all ON itens_venda
   FOR ALL USING (
     EXISTS (
@@ -345,31 +310,27 @@ CREATE POLICY policy_itens_venda_all ON itens_venda
     )
   );
 
--- Create policies for movimentacoes_estoque
+-- Criar políticas para movimentacoes_estoque
 CREATE POLICY policy_movimentacoes_estoque_all ON movimentacoes_estoque
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for movimentacoes_caixa
+-- Criar políticas para movimentacoes_caixa
 CREATE POLICY policy_movimentacoes_caixa_all ON movimentacoes_caixa
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for clientes
+-- Criar políticas para clientes
 CREATE POLICY policy_clientes_all ON clientes
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- Create policies for contas_financeiras
+-- Criar políticas para contas_financeiras
 CREATE POLICY policy_contas_financeiras_all ON contas_financeiras
   FOR ALL USING (auth.uid() = usuario_id)
   WITH CHECK (auth.uid() = usuario_id);
 
--- ==========================
--- 7. TRIGGERS FOR UPDATED_AT
--- ==========================
-
--- Update timestamp trigger function
+-- Função de trigger para atualizar timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -378,7 +339,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply update triggers
+-- Aplicar triggers de atualização
 DROP TRIGGER IF EXISTS update_produtos_updated_at ON produtos;
 CREATE TRIGGER update_produtos_updated_at
     BEFORE UPDATE ON produtos
@@ -396,13 +357,3 @@ CREATE TRIGGER update_contas_financeiras_updated_at
     BEFORE UPDATE ON contas_financeiras
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- END OF MIGRATION SCRIPT
--- ============================================================================
--- To apply this migration:
--- 1. Go to Supabase Dashboard > SQL Editor
--- 2. Copy and paste this entire script
--- 3. Click "Run" to execute
--- 4. Verify all tables and policies are created successfully
--- ============================================================================
