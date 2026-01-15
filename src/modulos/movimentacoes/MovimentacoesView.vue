@@ -317,10 +317,6 @@ import {
   InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 import Toast from '@/componentes/Toast.vue'
-import { 
-  caixaAtual as caixaAtualStore,
-  refreshCaixaState
-} from '@/stores/caixa.js'
 
 const movimentacoes = ref([])
 const carregando = ref(false)
@@ -328,8 +324,7 @@ const erro = ref('')
 const filtroData = ref(new Date().toISOString().split('T')[0])
 const mostrarToast = ref(false)
 const mensagemToast = ref('')
-// Use store's reactive ref
-const caixaAtual = caixaAtualStore
+const caixaAtual = ref(null)
 const mostrarModalDetalhes = ref(false)
 const movimentacaoSelecionada = ref(null)
 const detalhesVenda = ref(null)
@@ -356,8 +351,25 @@ const totalSaidas = computed(() => {
 
 async function verificarCaixaAberto() {
   try {
-    await refreshCaixaState()
-    
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const hoje = new Date().toISOString().split('T')[0]
+    const { data, error } = await supabase
+      .from('caixas')
+      .select('*')
+      .eq('usuario_id', user.id)
+      .eq('data', hoje)
+      .is('data_fechamento', null)
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+
+    caixaAtual.value = data
+
     if (caixaAtual.value) {
       await carregarMovimentacoes()
     }
@@ -517,8 +529,8 @@ function onVendaFinalizada() {
   carregarMovimentacoes()
 }
 
-onMounted(async () => {
-  await verificarCaixaAberto()
+onMounted(() => {
+  verificarCaixaAberto()
   
   // Ouvir eventos de venda finalizada
   window.addEventListener('venda-finalizada', onVendaFinalizada)

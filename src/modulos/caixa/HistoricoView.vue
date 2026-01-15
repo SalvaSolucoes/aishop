@@ -253,13 +253,8 @@ import {
   ClockIcon,
   InformationCircleIcon,
 } from '@heroicons/vue/24/outline'
-import { 
-  caixaAtual as caixaAtualStore,
-  refreshCaixaState
-} from '@/stores/caixa.js'
 
-// Use store's reactive ref
-const caixaAtual = caixaAtualStore
+const caixaAtual = ref(null)
 const vendas = ref([])
 const carregando = ref(false)
 const erro = ref('')
@@ -280,14 +275,34 @@ const ticketMedio = computed(() => {
 })
 
 onMounted(async () => {
-  await refreshCaixaState()
+  await carregarCaixaAtual()
   if (caixaAtual.value) {
     await carregarVendas()
   }
 })
 
-// Removed unused function
-// async function carregarCaixaAtual() { ... }
+async function carregarCaixaAtual() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const hoje = new Date().toISOString().split('T')[0]
+
+    const { data, error } = await supabase
+      .from('caixas')
+      .select('*')
+      .eq('usuario_id', user.id)
+      .eq('data', hoje)
+      .is('data_fechamento', null)
+      .maybeSingle()
+
+    if (error) throw error
+    caixaAtual.value = data
+  } catch (err) {
+    console.error('Erro ao carregar caixa:', err)
+    erro.value = 'Erro ao carregar informações do caixa'
+  }
+}
 
 async function carregarVendas() {
   if (!caixaAtual.value) return

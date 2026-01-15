@@ -197,10 +197,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
 import { formatarMoeda, formatarDataHora } from '@/utils/formatadores'
-import { 
-  caixaAberto as caixaAbertoStore,
-  refreshCaixaState
-} from '@/stores/caixa.js'
 import {
   CubeIcon,
   CurrencyDollarIcon,
@@ -213,8 +209,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const totalProdutos = ref(0)
-// Use the store's reactive ref
-const caixaAberto = caixaAbertoStore
+const caixaAberto = ref(false)
 const totalClientes = ref(0)
 const saldoFinanceiro = ref(0)
 const vendasRecentes = ref([])
@@ -235,8 +230,18 @@ async function carregarEstatisticas() {
 
     totalProdutos.value = countProdutos || 0
 
-    // Refresh cash register state from store
-    await refreshCaixaState()
+    // Verificar se há caixa aberto hoje
+    const hoje = new Date().toISOString().split('T')[0]
+    const { data: caixa } = await supabase
+      .from('caixas')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .eq('data', hoje)
+      .is('data_fechamento', null)
+      .limit(1)
+      .maybeSingle()
+
+    caixaAberto.value = !!caixa
 
     // Carregar total de clientes
     const { count: countClientes } = await supabase
@@ -335,8 +340,8 @@ function onContaFinanceiraRegistrada() {
   carregarEstatisticas()
 }
 
-onMounted(async () => {
-  await carregarEstatisticas()
+onMounted(() => {
+  carregarEstatisticas()
   carregarVendasRecentes()
   carregarProdutosEstoqueBaixo()
   window.addEventListener('venda-finalizada', onVendaFinalizada)
