@@ -194,6 +194,34 @@ BEGIN
   END IF;
 END $$;
 
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='clientes' AND column_name='data_nascimento') THEN
+    ALTER TABLE clientes ADD COLUMN data_nascimento DATE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='clientes' AND column_name='tipo_cliente') THEN
+    ALTER TABLE clientes ADD COLUMN tipo_cliente VARCHAR(20);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='clientes' AND column_name='limite_credito') THEN
+    ALTER TABLE clientes ADD COLUMN limite_credito DECIMAL(10,2) DEFAULT 0;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='clientes' AND column_name='pontos_fidelidade') THEN
+    ALTER TABLE clientes ADD COLUMN pontos_fidelidade INTEGER DEFAULT 0;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='clientes' AND column_name='situacao') THEN
+    ALTER TABLE clientes ADD COLUMN situacao VARCHAR(20) DEFAULT 'ativo';
+  END IF;
+END $$;
+
 -- ==========================
 -- 4. CREATE INDEXES
 -- ==========================

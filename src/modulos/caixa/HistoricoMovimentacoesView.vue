@@ -229,6 +229,7 @@ async function carregarMovimentacoes() {
       .from('movimentacoes_caixa')
       .select('*')
       .eq('caixa_id', caixaAtual.value.id)
+      .neq('categoria', 'Vendas')
       .order('created_at', { ascending: false })
 
     if (filtroData.value) {

@@ -194,7 +194,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/servicos/supabase'
 import { formatarMoeda, formatarDataHora } from '@/utils/formatadores'
 import {
@@ -321,10 +321,40 @@ async function carregarProdutosEstoqueBaixo() {
   }
 }
 
+function onVendaFinalizada() {
+  carregarEstatisticas()
+  carregarVendasRecentes()
+  carregarProdutosEstoqueBaixo()
+}
+
+function onMovimentacaoRegistrada() {
+  carregarEstatisticas()
+}
+
+function onMovimentacaoEstoqueRegistrada() {
+  carregarEstatisticas()
+  carregarProdutosEstoqueBaixo()
+}
+
+function onContaFinanceiraRegistrada() {
+  carregarEstatisticas()
+}
+
 onMounted(() => {
   carregarEstatisticas()
   carregarVendasRecentes()
   carregarProdutosEstoqueBaixo()
+  window.addEventListener('venda-finalizada', onVendaFinalizada)
+  window.addEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
+  window.addEventListener('movimentacao-estoque-registrada', onMovimentacaoEstoqueRegistrada)
+  window.addEventListener('conta-financeira-registrada', onContaFinanceiraRegistrada)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('venda-finalizada', onVendaFinalizada)
+  window.removeEventListener('movimentacao-registrada', onMovimentacaoRegistrada)
+  window.removeEventListener('movimentacao-estoque-registrada', onMovimentacaoEstoqueRegistrada)
+  window.removeEventListener('conta-financeira-registrada', onContaFinanceiraRegistrada)
 })
 </script>
 

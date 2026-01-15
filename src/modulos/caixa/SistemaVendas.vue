@@ -1365,6 +1365,27 @@ async function finalizarVenda() {
 
     if (errorCaixa) throw errorCaixa
 
+    window.dispatchEvent(new CustomEvent('movimentacao-estoque-registrada', {
+      detail: {
+        venda_id: venda.id,
+        numero_venda: numeroVenda,
+        atualizouEstoque: true,
+        atualizouRelatorios: true
+      }
+    }))
+
+    window.dispatchEvent(new CustomEvent('movimentacao-registrada', {
+      detail: {
+        tipo: 'entrada',
+        valor: total.value,
+        caixa_id: props.caixaId,
+        descricao: `Venda ${numeroVenda}`,
+        categoria: 'Vendas',
+        atualizouCaixa: true,
+        atualizouRelatorios: true
+      }
+    }))
+
     // Integração com Financeiro: Criar conta a receber se necessário
     if (formaPagamento.value === 'credito' && parcelasCredito.value > 1) {
       // Para vendas parceladas, criar contas a receber
@@ -1413,6 +1434,15 @@ async function finalizarVenda() {
         console.error('Erro ao criar conta a receber:', errorConta)
       }
     }
+
+    window.dispatchEvent(new CustomEvent('conta-financeira-registrada', {
+      detail: {
+        origem: 'venda',
+        venda_id: venda.id,
+        numero_venda: numeroVenda,
+        atualizouFinanceiro: formaPagamento.value === 'credito' || formaPagamento.value === 'vale'
+      }
+    }))
 
     // Atualizar pontos de fidelidade do cliente (se houver cliente)
     if (clienteSelecionado.value?.id) {

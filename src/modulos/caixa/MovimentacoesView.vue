@@ -13,44 +13,7 @@
       @fechar="mostrarToast = false"
     />
 
-    <!-- Cards de Resumo -->
-    <div v-if="caixaAtual" class="summary-cards">
-      <div class="summary-card summary-card-entrada">
-        <div class="summary-card-icon summary-icon-entrada">
-          <ArrowUpIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Entradas</div>
-          <div class="summary-card-value summary-value-entrada">
-            {{ formatarMoeda(totalEntradas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saida">
-        <div class="summary-card-icon summary-icon-saida">
-          <ArrowDownIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Total de Saídas</div>
-          <div class="summary-card-value summary-value-saida">
-            {{ formatarMoeda(totalSaidas) }}
-          </div>
-        </div>
-      </div>
-      <div class="summary-card summary-card-saldo">
-        <div class="summary-card-icon summary-icon-saldo">
-          <ArrowsRightLeftIcon class="summary-icon" />
-        </div>
-        <div class="summary-card-content">
-          <div class="summary-card-label">Saldo Líquido</div>
-          <div class="summary-card-value summary-value-saldo">
-            {{ formatarMoeda(totalEntradas - totalSaidas) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="caixa-fechado-alert">
+    <div v-if="!caixaAtual" class="caixa-fechado-alert">
       <div class="alert-content">
         <ArrowsRightLeftIcon class="alert-icon" />
         <div>
@@ -210,6 +173,8 @@ async function registrarMovimentacao() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const categoria = novaMovimentacao.value.categoria || (novaMovimentacao.value.tipo === 'entrada' ? 'Suprimento' : 'Sangria')
+
     const { error } = await supabase
       .from('movimentacoes_caixa')
       .insert({
@@ -218,7 +183,7 @@ async function registrarMovimentacao() {
         tipo: novaMovimentacao.value.tipo,
         valor: novaMovimentacao.value.valor,
         descricao: novaMovimentacao.value.descricao,
-        categoria: novaMovimentacao.value.categoria || null
+        categoria
       })
 
     if (error) throw error
