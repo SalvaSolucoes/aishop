@@ -5,7 +5,7 @@
         <button
           v-if="!caixaAberto"
           class="btn btn-primario"
-          @click="abrirCaixa"
+          @click="mostrarModalAbrirCaixaFn"
         >
           Abrir Caixa
         </button>
@@ -153,7 +153,7 @@ const mostrarModalFecharCaixa = ref(false)
 // Using imported function from caixa store
 // async function verificarCaixaAberto() { ... }
 
-function abrirCaixa() {
+function mostrarModalAbrirCaixaFn() {
   mostrarModalAbrirCaixa.value = true
   valorInicialInput.value = 0
   erroAbrirCaixa.value = ''
