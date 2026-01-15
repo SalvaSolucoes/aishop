@@ -70,7 +70,6 @@
             </div>
             <div>
               <h3 class="section-title-modern">Registrar Movimentação</h3>
-              <p class="section-subtitle">Adicione uma nova entrada ou saída de valores</p>
             </div>
           </div>
         </div>
@@ -159,7 +158,6 @@
             </div>
             <div>
               <h3 class="section-title-modern">Histórico de Movimentações</h3>
-              <p class="section-subtitle">Visualize todas as movimentações registradas</p>
             </div>
           </div>
           <div class="filter-group">
@@ -193,6 +191,7 @@
                   <th>Tipo</th>
                   <th>Descrição</th>
                   <th>Valor</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,10 +228,113 @@
                       <span class="valor-amount">{{ formatarMoeda(mov.valor) }}</span>
                     </div>
                   </td>
+                  <td>
+                    <button
+                      @click="abrirDetalhes(mov)"
+                      class="btn-detalhes"
+                      title="Ver detalhes"
+                    >
+                      <InformationCircleIcon class="h-5 w-5" />
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div v-if="mostrarModalDetalhes" class="modal-overlay" @click.self="fecharDetalhes">
+      <div class="modal-content modal-detalhes">
+        <div class="modal-header">
+          <h3>Detalhes da Movimentação</h3>
+          <button class="btn-close" @click="fecharDetalhes">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="carregandoDetalhes" class="text-center py-4">
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <p>Carregando detalhes...</p>
+          </div>
+          <div v-else-if="movimentacaoSelecionada" class="detalhes-grid">
+            <!-- Informações Básicas -->
+            <div class="detalhe-section">
+              <h4 class="detalhe-titulo">Informações Básicas</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Tipo:</span>
+                <span :class="movimentacaoSelecionada.tipo === 'entrada' ? 'badge badge-entrada' : 'badge badge-saida'">
+                  {{ movimentacaoSelecionada.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
+                </span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Valor:</span>
+                <span class="detalhe-valor" :class="movimentacaoSelecionada.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'">
+                  {{ formatarMoeda(movimentacaoSelecionada.valor) }}
+                </span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Data e Hora:</span>
+                <span>{{ formatarDataHora(movimentacaoSelecionada.created_at) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Descrição:</span>
+                <span>{{ movimentacaoSelecionada.descricao }}</span>
+              </div>
+              <div v-if="movimentacaoSelecionada.categoria" class="detalhe-item">
+                <span class="detalhe-label">Categoria:</span>
+                <span class="table-cell-categoria-badge">{{ movimentacaoSelecionada.categoria }}</span>
+              </div>
+            </div>
+
+            <!-- Informações da Venda (se aplicável) -->
+            <div v-if="detalhesVenda" class="detalhe-section">
+              <h4 class="detalhe-titulo">Informações da Venda</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Número da Venda:</span>
+                <span class="font-semibold">{{ detalhesVenda.numero_venda }}</span>
+              </div>
+              <div v-if="detalhesVenda.cliente" class="detalhe-item">
+                <span class="detalhe-label">Cliente:</span>
+                <span>{{ detalhesVenda.cliente }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Forma de Pagamento:</span>
+                <span>{{ formatarFormaPagamento(detalhesVenda.forma_pagamento) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Subtotal:</span>
+                <span>{{ formatarMoeda(detalhesVenda.subtotal) }}</span>
+              </div>
+              <div v-if="detalhesVenda.desconto > 0" class="detalhe-item">
+                <span class="detalhe-label">Desconto:</span>
+                <span class="text-red-600">{{ formatarMoeda(detalhesVenda.desconto) }}</span>
+              </div>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Total:</span>
+                <span class="font-semibold text-green-600">{{ formatarMoeda(detalhesVenda.total) }}</span>
+              </div>
+              <div v-if="detalhesVenda.observacoes" class="detalhe-item">
+                <span class="detalhe-label">Observações:</span>
+                <span class="text-sm italic">{{ detalhesVenda.observacoes }}</span>
+              </div>
+            </div>
+
+            <!-- Origem Manual -->
+            <div v-else-if="movimentacaoSelecionada.categoria !== 'Vendas'" class="detalhe-section">
+              <h4 class="detalhe-titulo">Origem</h4>
+              <div class="detalhe-item">
+                <span class="detalhe-label">Tipo de Registro:</span>
+                <span class="badge badge-info">Registro Manual</span>
+              </div>
+              <p class="text-sm text-gray-600 mt-2">
+                Esta movimentação foi registrada manualmente através do formulário de movimentações.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" @click="fecharDetalhes">Fechar</button>
         </div>
       </div>
     </div>
@@ -248,7 +350,8 @@ import {
   PlusIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  ClockIcon
+  ClockIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 import Toast from '@/componentes/Toast.vue'
 
@@ -259,6 +362,10 @@ const filtroData = ref(new Date().toISOString().split('T')[0])
 const mostrarToast = ref(false)
 const mensagemToast = ref('')
 const caixaAtual = ref(null)
+const mostrarModalDetalhes = ref(false)
+const movimentacaoSelecionada = ref(null)
+const detalhesVenda = ref(null)
+const carregandoDetalhes = ref(false)
 
 const novaMovimentacao = ref({
   tipo: 'entrada',
@@ -327,6 +434,7 @@ async function carregarMovimentacoes() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Carregar movimentações com informações relacionadas
     const { data, error } = await supabase
       .from('movimentacoes_caixa')
       .select('*')
@@ -342,6 +450,64 @@ async function carregarMovimentacoes() {
   } finally {
     carregando.value = false
   }
+}
+
+async function abrirDetalhes(movimentacao) {
+  movimentacaoSelecionada.value = movimentacao
+  detalhesVenda.value = null
+  mostrarModalDetalhes.value = true
+  carregandoDetalhes.value = true
+
+  try {
+    // Se for uma movimentação de venda, buscar detalhes
+    if (movimentacao.categoria === 'Vendas' && movimentacao.descricao.includes('Venda')) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Extrair número da venda da descrição
+      const numeroVenda = movimentacao.descricao.replace('Venda ', '').split(' ')[0]
+
+      // Buscar venda
+      const { data: venda, error: errorVenda } = await supabase
+        .from('vendas')
+        .select(`
+          *,
+          clientes (nome)
+        `)
+        .eq('numero_venda', numeroVenda)
+        .eq('usuario_id', user.id)
+        .maybeSingle()
+
+      if (!errorVenda && venda) {
+        detalhesVenda.value = {
+          ...venda,
+          cliente: venda.clientes ? (Array.isArray(venda.clientes) ? venda.clientes[0]?.nome : venda.clientes.nome) : 'Cliente não informado'
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao carregar detalhes:', err)
+  } finally {
+    carregandoDetalhes.value = false
+  }
+}
+
+function fecharDetalhes() {
+  mostrarModalDetalhes.value = false
+  movimentacaoSelecionada.value = null
+  detalhesVenda.value = null
+}
+
+function formatarFormaPagamento(forma) {
+  const formas = {
+    dinheiro: 'Dinheiro',
+    debito: 'Cartão Débito',
+    credito: 'Cartão Crédito',
+    pix: 'PIX',
+    vale: 'Vale/Convênio',
+    mistura: 'Pagamento Misto'
+  }
+  return formas[forma] || forma
 }
 
 async function registrarMovimentacao() {
@@ -926,8 +1092,181 @@ onUnmounted(() => {
 }
 
 .tabela-movimentacoes tbody td:last-child {
-  text-align: right;
+  text-align: center;
   font-weight: 600;
+}
+
+.btn-detalhes {
+  padding: 0.5rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-detalhes:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-detalhes {
+  max-width: 600px;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detalhes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.detalhe-section {
+  background: #f9fafb;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.detalhe-titulo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.detalhe-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detalhe-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detalhe-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.detalhe-valor {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.badge-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-ghost {
+  padding: 0.625rem 1.25rem;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: #e5e7eb;
+  color: #111827;
 }
 
 @keyframes slideInRight {

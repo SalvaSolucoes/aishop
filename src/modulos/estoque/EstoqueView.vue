@@ -113,44 +113,48 @@
         Nenhum produto encontrado.
       </div>
 
-      <table v-else class="tabela tabela-estoque">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Nome</th>
-            <th>Quantidade</th>
-            <th>Preço Unitário</th>
-            <th>Valor Total</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="produto in produtosFiltrados" :key="produto.id">
-            <td>{{ produto.codigo || '-' }}</td>
-            <td>{{ produto.nome }}</td>
-            <td>{{ produto.quantidade }}</td>
-            <td>{{ formatarMoeda(produto.preco_unitario) }}</td>
-            <td>{{ formatarMoeda(produto.preco_unitario * produto.quantidade) }}</td>
-            <td>
-              <span :class="getBadgeClass(produto.quantidade, produto.estoque_minimo)">
-                {{ getStatusEstoque(produto.quantidade, produto.estoque_minimo) }}
-              </span>
-            </td>
-            <td>
-              <button class="btn btn-ghost" @click="editarProduto(produto)" style="margin-right: 0.5rem;">
-                Editar
-              </button>
-              <button class="btn btn-ghost" @click="registrarMovimentacao(produto)" style="margin-right: 0.5rem;">
-                Movimentar
-              </button>
-              <button class="btn btn-perigo" @click="confirmarExclusao(produto)">
-                Excluir
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto -mx-3 sm:mx-0">
+        <table class="tabela tabela-estoque">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Quantidade</th>
+              <th>Preço Unitário</th>
+              <th>Valor Total</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="produto in produtosFiltrados" :key="produto.id">
+              <td>{{ produto.codigo || '-' }}</td>
+              <td>{{ produto.nome }}</td>
+              <td>{{ produto.quantidade }}</td>
+              <td>{{ formatarMoeda(produto.preco_unitario) }}</td>
+              <td>{{ formatarMoeda(produto.preco_unitario * produto.quantidade) }}</td>
+              <td>
+                <span :class="getBadgeClass(produto.quantidade, produto.estoque_minimo)">
+                  {{ getStatusEstoque(produto.quantidade, produto.estoque_minimo) }}
+                </span>
+              </td>
+              <td>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <button class="btn btn-ghost btn-sm" @click="editarProduto(produto)">
+                    Editar
+                  </button>
+                  <button class="btn btn-ghost btn-sm" @click="registrarMovimentacao(produto)">
+                    Movimentar
+                  </button>
+                  <button class="btn btn-perigo btn-sm" @click="confirmarExclusao(produto)">
+                    Excluir
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Modal de Produto -->

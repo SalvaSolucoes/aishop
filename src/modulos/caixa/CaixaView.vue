@@ -7,7 +7,7 @@
           class="btn btn-primario"
           @click="abrirCaixa"
         >
-          {{ caixaAtual ? 'Reabrir Caixa' : 'Abrir Caixa' }}
+          Abrir Caixa
         </button>
         <button
           v-else
@@ -37,16 +37,8 @@
         <div class="empty-caixa-icon caixa-fechado">
           <CurrencyDollarIcon class="h-16 w-16" />
         </div>
-        <h3 class="caixa-fechado-texto">
-          {{ caixaAtual ? 'Caixa Fechado' : 'Caixa Fechado' }}
-        </h3>
-        <p v-if="caixaAtual">
-          Caixa foi fechado hoje às {{ formatarHora(caixaAtual.data_fechamento) }}<br>
-          Clique em "Abrir Caixa" para reabrir
-        </p>
-        <p v-else>
-          Abra o caixa para começar a realizar vendas
-        </p>
+        <h3 class="caixa-fechado-texto">Caixa Fechado</h3>
+        <p>Abra o caixa para começar a realizar vendas</p>
       </div>
     </div>
 
@@ -54,31 +46,15 @@
     <div v-if="mostrarModalAbrirCaixa" class="modal-overlay" @click.self="fecharModalAbrirCaixa">
       <div class="modal-content modal-abrir-caixa">
         <div class="modal-header">
-          <h3>{{ caixaAtual ? 'Reabrir Caixa' : 'Abrir Caixa' }}</h3>
+          <h3>Abrir Caixa</h3>
           <button class="btn-close" @click="fecharModalAbrirCaixa">×</button>
         </div>
         <form @submit.prevent="confirmarAbrirCaixa" class="modal-body">
           <div v-if="erroAbrirCaixa" class="alert alert-erro">
             {{ erroAbrirCaixa }}
           </div>
-          
-          <!-- Informações do caixa existente quando for reabertura -->
-          <div v-if="caixaAtual" class="info-caixa-existente">
-            <div class="alert alert-info">
-              <h4>Reabrindo caixa existente</h4>
-              <p>Este caixa foi fechado hoje e será reaberto mantendo todos os dados:</p>
-              <ul>
-                <li>Valor inicial: {{ formatarMoeda(caixaAtual.valor_inicial) }}</li>
-                <li v-if="caixaAtual.total_dinheiro">Total em dinheiro: {{ formatarMoeda(caixaAtual.total_dinheiro) }}</li>
-                <li v-if="caixaAtual.valor_final">Valor final anterior: {{ formatarMoeda(caixaAtual.valor_final) }}</li>
-                <li>Fechado às: {{ formatarHora(caixaAtual.data_fechamento) }}</li>
-              </ul>
-              <p><strong>Todas as vendas e movimentações serão preservadas.</strong></p>
-            </div>
-          </div>
-
           <div class="form-section">
-            <div v-if="!caixaAtual" class="form-group">
+            <div class="form-group">
               <label class="form-label">Valor Inicial</label>
               <div class="input-wrapper">
                 <span class="input-prefix">R$</span>
@@ -96,23 +72,13 @@
               </div>
               <small class="form-hint">Informe o valor em dinheiro disponível no caixa</small>
             </div>
-            
-            <div v-else class="form-group">
-              <div class="caixa-info-readonly">
-                <label class="form-label">Valor Inicial (Preservado)</label>
-                <div class="valor-preservado">
-                  {{ formatarMoeda(caixaAtual.valor_inicial) }}
-                </div>
-                <small class="form-hint">O valor inicial do caixa será mantido conforme estava</small>
-              </div>
-            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-ghost" @click="fecharModalAbrirCaixa">
               Cancelar
             </button>
-            <button type="submit" class="btn btn-primario" :disabled="!caixaAtual && (valorInicialInput === null || valorInicialInput === undefined || isNaN(valorInicialInput) || valorInicialInput < 0)">
-              {{ caixaAtual ? 'Reabrir Caixa' : 'Abrir Caixa' }}
+            <button type="submit" class="btn btn-primario" :disabled="valorInicialInput === null || valorInicialInput === undefined || isNaN(valorInicialInput) || valorInicialInput < 0">
+              Abrir Caixa
             </button>
           </div>
         </form>
@@ -183,9 +149,7 @@ async function verificarCaixaAberto() {
     if (!user) return
 
     const hoje = new Date().toISOString().split('T')[0]
-    
-    // Verificar caixa aberto
-    const { data: caixaAbertoData, error: errorAberto } = await supabase
+    const { data, error } = await supabase
       .from('caixas')
       .select('*')
       .eq('usuario_id', user.id)
@@ -194,32 +158,12 @@ async function verificarCaixaAberto() {
       .limit(1)
       .single()
 
-    if (errorAberto && errorAberto.code !== 'PGRST116') {
-      throw errorAberto
+    if (error && error.code !== 'PGRST116') {
+      throw error
     }
 
-    if (caixaAbertoData) {
-      caixaAberto.value = true
-      caixaAtual.value = caixaAbertoData
-      return
-    }
-
-    // Se não há caixa aberto, verificar se há caixa fechado
-    const { data: caixaFechado, error: errorFechado } = await supabase
-      .from('caixas')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('data', hoje)
-      .not('data_fechamento', 'is', null)
-      .limit(1)
-      .single()
-
-    if (errorFechado && errorFechado.code !== 'PGRST116') {
-      throw errorFechado
-    }
-
-    caixaAberto.value = false
-    caixaAtual.value = caixaFechado || null
+    caixaAberto.value = !!data
+    caixaAtual.value = data
   } catch (err) {
     erro.value = 'Erro ao verificar caixa: ' + err.message
     console.error(err)
@@ -228,18 +172,14 @@ async function verificarCaixaAberto() {
 
 function abrirCaixa() {
   mostrarModalAbrirCaixa.value = true
-  // Se há um caixa existente (fechado), não precisa definir valor inicial
-  // Se não há caixa, começar com 0
-  valorInicialInput.value = caixaAtual.value ? caixaAtual.value.valor_inicial : 0
+  valorInicialInput.value = 0
   erroAbrirCaixa.value = ''
-  // Focar no input após o modal aparecer (apenas se não for reabertura)
-  if (!caixaAtual.value) {
-    setTimeout(() => {
-      if (inputValorInicial.value) {
-        inputValorInicial.value.focus()
-      }
-    }, 100)
-  }
+  // Focar no input após o modal aparecer
+  setTimeout(() => {
+    if (inputValorInicial.value) {
+      inputValorInicial.value.focus()
+    }
+  }, 100)
 }
 
 function fecharModalAbrirCaixa() {
@@ -252,8 +192,7 @@ async function confirmarAbrirCaixa() {
   erroAbrirCaixa.value = ''
   erro.value = ''
 
-  // Validar valor inicial apenas se não for reabertura
-  if (!caixaAtual.value && (valorInicialInput.value === null || valorInicialInput.value === undefined || isNaN(valorInicialInput.value) || valorInicialInput.value < 0)) {
+  if (valorInicialInput.value === null || valorInicialInput.value === undefined || isNaN(valorInicialInput.value) || valorInicialInput.value < 0) {
     erroAbrirCaixa.value = 'Valor inicial inválido. Informe um valor maior ou igual a zero.'
     return
   }
@@ -263,54 +202,17 @@ async function confirmarAbrirCaixa() {
     if (!user) throw new Error('Usuário não autenticado')
 
     const hoje = new Date().toISOString().split('T')[0]
-    
-    // Primeiro, verificar se já existe um caixa para hoje (aberto ou fechado)
-    const { data: caixaExistente, error: errorVerificar } = await supabase
+    const { error } = await supabase
       .from('caixas')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('data', hoje)
-      .limit(1)
-      .single()
+      .insert([{
+        usuario_id: user.id,
+        data: hoje,
+        valor_inicial: valorInicialInput.value
+      }])
 
-    if (errorVerificar && errorVerificar.code !== 'PGRST116') {
-      throw errorVerificar
-    }
+    if (error) throw error
 
-    if (caixaExistente) {
-      // Se existe um caixa fechado, reabrir mantendo todos os dados
-      if (caixaExistente.data_fechamento) {
-        const { error: errorReabrir } = await supabase
-          .from('caixas')
-          .update({
-            data_fechamento: null,
-            // Manter todos os dados existentes, apenas remover o fechamento
-            // valor_inicial permanece o mesmo
-            // todas as vendas e movimentações são preservadas
-          })
-          .eq('id', caixaExistente.id)
-
-        if (errorReabrir) throw errorReabrir
-        mostrarMensagemSucesso('Caixa reaberto com sucesso! Todos os dados anteriores foram preservados.')
-      } else {
-        // Caixa já está aberto
-        erroAbrirCaixa.value = 'Já existe um caixa aberto para hoje.'
-        return
-      }
-    } else {
-      // Criar novo caixa
-      const { error } = await supabase
-        .from('caixas')
-        .insert([{
-          usuario_id: user.id,
-          data: hoje,
-          valor_inicial: valorInicialInput.value
-        }])
-
-      if (error) throw error
-      mostrarMensagemSucesso('Caixa aberto com sucesso!')
-    }
-
+    mostrarMensagemSucesso('Caixa aberto com sucesso!')
     fecharModalAbrirCaixa()
     await verificarCaixaAberto()
   } catch (err) {
@@ -374,14 +276,6 @@ function onVendaFinalizada(dados) {
   window.dispatchEvent(new CustomEvent('venda-finalizada', {
     detail: dados
   }))
-}
-
-function formatarHora(dataISO) {
-  if (!dataISO) return ''
-  return new Date(dataISO).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 onMounted(() => {
@@ -575,54 +469,6 @@ onMounted(() => {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #6b7280;
-}
-
-.info-caixa-existente {
-  margin-bottom: 1.5rem;
-}
-
-.alert-info {
-  background-color: #dbeafe;
-  border: 1px solid #93c5fd;
-  color: #1e40af;
-  padding: 1rem;
-  border-radius: 0.5rem;
-}
-
-.alert-info h4 {
-  margin: 0 0 0.5rem 0;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.alert-info p {
-  margin: 0.5rem 0;
-  font-size: 0.8125rem;
-}
-
-.alert-info ul {
-  margin: 0.5rem 0;
-  padding-left: 1.25rem;
-  font-size: 0.8125rem;
-}
-
-.alert-info li {
-  margin: 0.25rem 0;
-}
-
-.caixa-info-readonly {
-  text-align: center;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-}
-
-.valor-preservado {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #059669;
-  margin: 0.5rem 0;
 }
 
 /* Estado vazio quando caixa fechado */

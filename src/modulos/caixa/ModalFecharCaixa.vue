@@ -142,16 +142,27 @@
             </div>
           </div>
 
-          <!-- Observações -->
+          <!-- Observações e Motivo -->
           <div class="form-section">
-            <h4 class="section-title">Observações</h4>
+            <h4 class="section-title">Fechamento do Caixa</h4>
             <div class="form-group">
-              <label class="form-label">Observações</label>
+              <label class="form-label">Motivo do Fechamento</label>
+              <textarea
+                v-model="dadosFechamento.motivo_fechamento"
+                class="form-textarea"
+                placeholder="Ex: Fim do expediente, Troca de turno, Fim do dia..."
+                rows="2"
+                required
+              />
+              <small class="form-hint">Informe o motivo do fechamento do caixa</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Observações Adicionais (Opcional)</label>
               <textarea
                 v-model="dadosFechamento.observacoes"
                 class="form-textarea"
                 placeholder="Informações adicionais sobre o fechamento"
-                rows="3"
+                rows="2"
               />
             </div>
           </div>
@@ -166,7 +177,7 @@
           type="button"
           class="btn btn-primario"
           @click="confirmarFechamento"
-          :disabled="salvando || !dadosFechamento.saldo_real"
+          :disabled="salvando || !dadosFechamento.saldo_real || !dadosFechamento.motivo_fechamento"
         >
           {{ salvando ? 'Fechando...' : 'Confirmar Fechamento' }}
         </button>
@@ -216,6 +227,7 @@ const dadosFechamento = ref({
   total_sangria: 0,
   total_suprimento: 0,
   saldo_real: 0,
+  motivo_fechamento: '',
   observacoes: ''
 })
 
@@ -307,6 +319,11 @@ async function confirmarFechamento() {
     return
   }
 
+  if (!dadosFechamento.value.motivo_fechamento || !dadosFechamento.value.motivo_fechamento.trim()) {
+    erro.value = 'Informe o motivo do fechamento do caixa'
+    return
+  }
+
   salvando.value = true
   erro.value = ''
 
@@ -326,7 +343,9 @@ async function confirmarFechamento() {
         total_vale: totaisPorForma.value.vale,
         total_sangria: dadosFechamento.value.total_sangria,
         total_suprimento: dadosFechamento.value.total_suprimento,
-        diferenca_caixa: diferencaCaixa.value
+        diferenca_caixa: diferencaCaixa.value,
+        motivo_fechamento: dadosFechamento.value.motivo_fechamento.trim(),
+        observacoes: dadosFechamento.value.observacoes?.trim() || null
       })
       .eq('id', props.caixa.id)
 

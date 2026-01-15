@@ -26,12 +26,29 @@ const rotas = [
       {
         path: 'caixa',
         name: 'Caixa',
-        component: () => import('@/modulos/caixa/CaixaView.vue')
-      },
-      {
-        path: 'movimentacoes',
-        name: 'Movimentacoes',
-        component: () => import('@/modulos/movimentacoes/MovimentacoesView.vue')
+        redirect: '/caixa/carrinho',
+        children: [
+          {
+            path: 'carrinho',
+            name: 'CaixaCarrinho',
+            component: () => import('@/modulos/caixa/CaixaView.vue')
+          },
+          {
+            path: 'movimentacoes',
+            name: 'CaixaMovimentacoes',
+            component: () => import('@/modulos/caixa/MovimentacoesView.vue')
+          },
+          {
+            path: 'historico-vendas',
+            name: 'CaixaHistoricoVendas',
+            component: () => import('@/modulos/caixa/HistoricoView.vue')
+          },
+          {
+            path: 'historico-movimentacoes',
+            name: 'CaixaHistoricoMovimentacoes',
+            component: () => import('@/modulos/caixa/HistoricoMovimentacoesView.vue')
+          }
+        ]
       },
       {
         path: 'clientes',
