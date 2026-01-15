@@ -133,13 +133,17 @@ const autenticacaoStore = useAutenticacaoStore()
 const usuarioEmail = computed(() => autenticacaoStore.usuario?.email || '')
 
 const submenuAberto = ref({
-  Caixa: false
+  Caixa: false,
+  Relatórios: false
 })
 
 // Abrir submenu automaticamente se a rota atual pertence a ele
 watch(() => route.path, (novoCaminho) => {
   if (novoCaminho.startsWith('/caixa')) {
     submenuAberto.value.Caixa = true
+  }
+  if (novoCaminho.startsWith('/relatorios')) {
+    submenuAberto.value.Relatórios = true
   }
 }, { immediate: true })
 
@@ -163,7 +167,17 @@ const itensMenu = [
   },
   { nome: 'Clientes', rota: '/clientes', icone: UserGroupIcon },
   { nome: 'Financeiro', rota: '/financeiro', icone: CreditCardIcon },
-  { nome: 'Relatórios', rota: '/relatorios', icone: DocumentChartBarIcon }
+  {
+    nome: 'Relatórios',
+    icone: DocumentChartBarIcon,
+    rotaBase: '/relatorios',
+    submenu: [
+      { nome: 'Estoque', rota: '/relatorios/estoque', icone: CubeIcon },
+      { nome: 'Caixa', rota: '/relatorios/caixa', icone: CurrencyDollarIcon },
+      { nome: 'Clientes', rota: '/relatorios/clientes', icone: UserGroupIcon },
+      { nome: 'Financeiro', rota: '/relatorios/financeiro', icone: CreditCardIcon }
+    ]
+  }
 ]
 
 async function fazerLogout() {

@@ -63,7 +63,29 @@ const rotas = [
       {
         path: 'relatorios',
         name: 'Relatorios',
-        component: () => import('@/modulos/relatorios/RelatoriosView.vue')
+        redirect: '/relatorios/estoque',
+        children: [
+          {
+            path: 'estoque',
+            name: 'RelatoriosEstoque',
+            component: () => import('@/modulos/relatorios/RelatoriosEstoqueView.vue')
+          },
+          {
+            path: 'caixa',
+            name: 'RelatoriosCaixa',
+            component: () => import('@/modulos/relatorios/RelatoriosCaixaView.vue')
+          },
+          {
+            path: 'clientes',
+            name: 'RelatoriosClientes',
+            component: () => import('@/modulos/relatorios/RelatoriosClientesView.vue')
+          },
+          {
+            path: 'financeiro',
+            name: 'RelatoriosFinanceiro',
+            component: () => import('@/modulos/relatorios/RelatoriosFinanceiroView.vue')
+          }
+        ]
       }
     ]
   }
