@@ -1,4 +1,4 @@
-# AIShop - Sistema de Gestão Empresarial
+# PDV SALVA
 
 Sistema completo de gestão empresarial para controle de estoque, caixa, clientes e finanças.
 
