@@ -125,8 +125,13 @@ import {
   ArrowsRightLeftIcon,
   PlusIcon,
 } from '@heroicons/vue/24/outline'
+import { 
+  caixaAtual as caixaAtualStore,
+  refreshCaixaState
+} from '@/stores/caixa'
 
-const caixaAtual = ref(null)
+// Use store's reactive ref
+const caixaAtual = caixaAtualStore
 const carregando = ref(false)
 const erro = ref('')
 const mostrarToast = ref(false)
@@ -140,31 +145,11 @@ const novaMovimentacao = ref({
 })
 
 onMounted(async () => {
-  await carregarCaixaAtual()
+  await refreshCaixaState()
 })
 
-async function carregarCaixaAtual() {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const hoje = new Date().toISOString().split('T')[0]
-
-    const { data, error } = await supabase
-      .from('caixas')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('data', hoje)
-      .is('data_fechamento', null)
-      .maybeSingle()
-
-    if (error) throw error
-    caixaAtual.value = data
-  } catch (err) {
-    console.error('Erro ao carregar caixa:', err)
-    erro.value = 'Erro ao carregar informações do caixa'
-  }
-}
+// Removed unused function
+// async function carregarCaixaAtual() { ... }
 
 async function registrarMovimentacao() {
   if (!caixaAtual.value) return
@@ -210,7 +195,8 @@ async function registrarMovimentacao() {
       categoria: ''
     }
 
-    await carregarCaixaAtual()
+    // Refresh cash register state
+    await refreshCaixaState()
   } catch (err) {
     console.error('Erro ao registrar movimentação:', err)
     erro.value = 'Erro ao registrar movimentação'

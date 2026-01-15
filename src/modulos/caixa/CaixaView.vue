@@ -126,10 +126,17 @@ import ModalConfirmacao from '@/componentes/ModalConfirmacao.vue'
 import Toast from '@/componentes/Toast.vue'
 import SistemaVendas from './SistemaVendas.vue'
 import ModalFecharCaixa from './ModalFecharCaixa.vue'
+import { 
+  caixaAberto, 
+  caixaAtual, 
+  carregando,
+  erro,
+  verificarCaixaAberto, 
+  abrirCaixa, 
+  fecharCaixa as fecharCaixaService,
+  refreshCaixaState
+} from '@/stores/caixa'
 
-const caixaAberto = ref(false)
-const caixaAtual = ref(null)
-const erro = ref('')
 const mostrarModalAbrirCaixa = ref(false)
 const valorInicialInput = ref(0)
 const erroAbrirCaixa = ref('')
@@ -143,32 +150,8 @@ const mostrarToast = ref(false)
 const mensagemToast = ref('')
 const mostrarModalFecharCaixa = ref(false)
 
-async function verificarCaixaAberto() {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const hoje = new Date().toISOString().split('T')[0]
-    const { data, error } = await supabase
-      .from('caixas')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('data', hoje)
-      .is('data_fechamento', null)
-      .limit(1)
-      .single()
-
-    if (error && error.code !== 'PGRST116') {
-      throw error
-    }
-
-    caixaAberto.value = !!data
-    caixaAtual.value = data
-  } catch (err) {
-    erro.value = 'Erro ao verificar caixa: ' + err.message
-    console.error(err)
-  }
-}
+// Using imported function from caixa store
+// async function verificarCaixaAberto() { ... }
 
 function abrirCaixa() {
   mostrarModalAbrirCaixa.value = true
@@ -198,25 +181,11 @@ async function confirmarAbrirCaixa() {
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Usuário não autenticado')
-
-    const hoje = new Date().toISOString().split('T')[0]
-    const { error } = await supabase
-      .from('caixas')
-      .insert([{
-        usuario_id: user.id,
-        data: hoje,
-        valor_inicial: valorInicialInput.value
-      }])
-
-    if (error) throw error
-
+    await abrirCaixa(valorInicialInput.value)
     mostrarMensagemSucesso('Caixa aberto com sucesso!')
     fecharModalAbrirCaixa()
-    await verificarCaixaAberto()
   } catch (err) {
-    erroAbrirCaixa.value = 'Erro ao abrir caixa: ' + err.message
+    erroAbrirCaixa.value = err.message
     console.error(err)
   }
 }
@@ -225,11 +194,10 @@ function fecharCaixa() {
   mostrarModalFecharCaixa.value = true
 }
 
-function onCaixaFechado() {
+async function onCaixaFechado() {
   mostrarMensagemSucesso('Caixa fechado com sucesso!')
   mostrarModalFecharCaixa.value = false
-  caixaAberto.value = false
-  caixaAtual.value = null
+  // State is managed by the store
 }
 
 function mostrarConfirmacao(titulo, mensagem, tipo, callback) {
@@ -278,8 +246,8 @@ function onVendaFinalizada(dados) {
   }))
 }
 
-onMounted(() => {
-  verificarCaixaAberto()
+onMounted(async () => {
+  await refreshCaixaState()
 })
 </script>
 
